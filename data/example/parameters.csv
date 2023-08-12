@@ -1,0 +1,6 @@
+Name,Value
+Locale,en_US.utf-8
+Date time format,%a %b %d %H:%M:%S %Y
+Duration format,%H:%M:%S
+Duration zero,00:00:00
+Time step,00:15:00

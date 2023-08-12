@@ -1,0 +1,17 @@
+Event,Resource
+Lesson Audrey,Teacher
+Lesson Audrey,Audrey
+Lesson Henry,Teacher
+Lesson Henry,Henry
+Lesson Francesca,Teacher
+Lesson Francesca,Francesca
+Lesson Thomas,Teacher
+Lesson Thomas,Thomas
+Lesson Adeline,Teacher
+Lesson Adeline,Adeline
+Group Lesson,Teacher
+Group Lesson,Audrey
+Group Lesson,Henry
+Group Lesson,Francesca
+Group Lesson,Thomas
+Group Lesson,Adeline

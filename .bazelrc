@@ -1,0 +1,4 @@
+build --compilation_mode=opt
+#build --cxxopt=-Wall --cxxopt=-Wextra
+
+build --define cbc=true
