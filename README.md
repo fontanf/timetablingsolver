@@ -4,11 +4,13 @@ A solver for timetabling problems.
 
 This tool is designed to help building timetables to schedule some events according to the availabilities and preferences of the attendees.
 
-Input:
-![Example](img/input.png?raw=true "Input example")
+Input example:
+
+<img src="https://github.com/fontanf/timetablingsolver/blob/main/img/input.png" height="512">
 
 Output:
-![Example](img/output.png?raw=true "Output example")
+
+<img src="https://github.com/fontanf/timetablingsolver/blob/main/img/output.png" height="512">
 
 ## Usage
 
