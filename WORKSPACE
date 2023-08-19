@@ -58,9 +58,6 @@ cc_library(
                 "lib/libOsi.lib",
                 "lib/libOsiCommonTests.lib"],
             "//conditions:default": []}),
-    copts = select({
-            "@bazel_tools//src/conditions:windows": ["/MT"],
-            "//conditions:default": []}),
 )
 cc_library(
     name = "coinutils",

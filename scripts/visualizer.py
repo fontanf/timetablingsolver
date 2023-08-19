@@ -2,6 +2,7 @@ import csv
 import datetime
 import pandas as pd
 import plotly.express as px
+import locale
 
 
 if __name__ == "__main__":
@@ -48,6 +49,7 @@ if __name__ == "__main__":
         reader = csv.DictReader(f)
         for line in reader:
             parameters[line["Name"]] = line["Value"]
+    locale.setlocale(locale.LC_ALL, parameters["Locale"])
     with open(args.events, 'r') as f:
         reader = csv.DictReader(f)
         for line in reader:
