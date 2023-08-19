@@ -8,6 +8,8 @@ namespace timetablingsolver
 struct OptimizeOptionalParameters
 {
     optimizationtools::Info info = optimizationtools::Info();
+
+    std::string milp_mps_path;
 };
 
 struct Output

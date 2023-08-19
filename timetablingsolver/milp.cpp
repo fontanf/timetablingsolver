@@ -2,6 +2,8 @@
 
 #include "timetablingsolver/milp.hpp"
 
+#include <cstdio>
+
 #include <CbcModel.hpp>
 #include <OsiCbcSolverInterface.hpp>
 
@@ -206,6 +208,10 @@ MilpCbcOutput timetablingsolver::milp_cbc(
         // Set time limit.
         model.setMaximumSeconds(parameters.info.remaining_time());
 
+        // Set the maximum number of nodes.
+        if (parameters.maximum_number_of_nodes != -1)
+            model.setMaximumNodes(parameters.maximum_number_of_nodes);
+
         // Add initial solution.
         if (objective_id != 0) {
             std::vector<double> sol_init(number_of_columns, 0);
@@ -220,6 +226,11 @@ MilpCbcOutput timetablingsolver::milp_cbc(
                     number_of_columns,
                     COIN_DBL_MAX,
                     true);
+        }
+
+        if (!parameters.mps_path.empty()) {
+            std::string mps_path = parameters.mps_path + "_" + std::to_string(objective_id);
+            solver.writeMps(mps_path.c_str());
         }
 
         // Do complete search.

@@ -69,6 +69,9 @@ public:
     /** Write the solution to a file. */
     void write(std::string certificate_path) const;
 
+    /** Write a file containing the score of each event of each resource. */
+    void write_scores(std::string file_path) const;
+
 private:
 
     /** Instance. */

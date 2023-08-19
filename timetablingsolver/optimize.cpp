@@ -78,6 +78,9 @@ Output timetablingsolver::optimize(
     Output output(instance, parameters.info);
 
     MilpCbcOptionalParameters milp_cbc_parameters;
+    milp_cbc_parameters.mps_path = parameters.milp_mps_path;
+    milp_cbc_parameters.maximum_number_of_nodes = 1024;
+    milp_cbc_parameters.info = optimizationtools::Info(parameters.info, false, "");
     MilpCbcOutput milp_cbc_output = milp_cbc(instance, milp_cbc_parameters);
 
     output.solution = milp_cbc_output.solution;

@@ -8,7 +8,11 @@ std::time_t Instance::str2date_abs(std::string time_str) const
     ss.imbue(std::locale(locale_));
     ss >> std::get_time(&tm_date_, date_time_format_.c_str());
     tm_date_.tm_isdst = 0;
+#ifdef _WIN32
+    return _mkgmtime(&tm_date_);
+#else
     return std::mktime(&tm_date_) - timezone;
+#endif
 }
 
 Time Instance::str2date_floor(std::string time_str) const
@@ -69,7 +73,7 @@ Instance::Instance(
             std::string event_resources_path,
             std::string parameters_path)
 {
-    tm_duration_.tm_year = 2023;
+    tm_duration_.tm_year = 70;
     tm_duration_.tm_mon = 1;
     tm_duration_.tm_mday = 1;
     read_parameters(parameters_path);
@@ -436,11 +440,13 @@ std::ostream& Instance::print(
         os
             << std::endl
             << std::setw(12) << "Event"
+            << std::setw(24) << "Name"
             << std::setw(8) << ""
             << std::setw(12) << "Duration"
             << std::setw(12) << "# resources"
             << std::endl
             << std::setw(12) << "-----"
+            << std::setw(24) << "----"
             << std::setw(8) << ""
             << std::setw(12) << "--------"
             << std::setw(12) << "-----------"
@@ -451,6 +457,7 @@ std::ostream& Instance::print(
             const Event& event = this->event(event_id);
             os
                 << std::setw(12) << event_id
+                << std::setw(24) << event.name
                 << std::setw(8) << event.duration
                 << std::setw(12) << duration2str(event.duration)
                 << std::setw(12) << event.resource_ids.size()
@@ -461,9 +468,11 @@ std::ostream& Instance::print(
         os
             << std::endl
             << std::setw(12) << "Resource"
+            << std::setw(24) << "Name"
             << std::setw(12) << "# events"
             << std::endl
             << std::setw(12) << "--------"
+            << std::setw(24) << "----"
             << std::setw(12) << "--------"
             << std::endl;
         for (ResourceId resource_id = 0;
@@ -472,6 +481,7 @@ std::ostream& Instance::print(
             const Resource& resource = this->resource(resource_id);
             os
                 << std::setw(12) << resource_id
+                << std::setw(24) << resource.name
                 << std::setw(12) << resource.event_ids.size()
                 << std::endl;
         }
@@ -482,19 +492,26 @@ std::ostream& Instance::print(
         os
             << std::endl
             << std::setw(12) << "Event"
+            << std::setw(24) << "Name"
             << std::setw(12) << "Resource"
+            << std::setw(24) << "Name"
             << std::endl
             << std::setw(12) << "-----"
+            << std::setw(24) << "----"
             << std::setw(12) << "--------"
+            << std::setw(24) << "----"
             << std::endl;
         for (EventId event_id = 0;
                 event_id < number_of_events();
                 ++event_id) {
             const Event& event = this->event(event_id);
             for (ResourceId resource_id: event.resource_ids) {
+                const Resource& resource = this->resource(resource_id);
                 os
                     << std::setw(12) << event_id
+                    << std::setw(24) << event.name
                     << std::setw(12) << resource_id
+                    << std::setw(24) << resource.name
                     << std::endl;
             }
         }
@@ -505,11 +522,13 @@ std::ostream& Instance::print(
         os
             << std::endl
             << std::setw(12) << "Resource"
+            << std::setw(24) << "Name"
             << std::setw(8) << ""
             << std::setw(36) << "Time"
             << std::setw(12) << "Score"
             << std::endl
             << std::setw(12) << "--------"
+            << std::setw(24) << "----"
             << std::setw(8) << ""
             << std::setw(36) << "----"
             << std::setw(12) << "-----"
@@ -525,6 +544,7 @@ std::ostream& Instance::print(
                     continue;
                 os
                     << std::setw(12) << resource_id
+                    << std::setw(24) << resource.name
                     << std::setw(8) << time
                     << std::setw(36) << date2str(time)
                     << std::setw(12) << resource.scores[time]

@@ -44,51 +44,60 @@ local_repository(
 
 new_local_repository(
     name = "coinor",
-    path = "/home/florian/Programmes/coinbrew/",
+    path = "/home/florian/Programmes/coinbrew/dist/",
+    # https://github.com/coin-or/Cbc/releases
+    #path = ".../Cbc-releases.2.10.10-w64-msvc16-md/",
     build_file_content = """
 cc_library(
     name = "osi",
-    hdrs = glob(["dist/include/coin/Osi*.h*"], exclude_directories = 0),
-    strip_include_prefix = "dist/include/coin/",
+    hdrs = glob(["include/coin/Osi*.h*"], exclude_directories = 0),
+    strip_include_prefix = "include/coin/",
     visibility = ["//visibility:public"],
+    srcs = select({
+            "@bazel_tools//src/conditions:windows": [
+                "lib/libOsi.lib",
+                "lib/libOsiCommonTests.lib"],
+            "//conditions:default": []}),
+    copts = select({
+            "@bazel_tools//src/conditions:windows": ["/MT"],
+            "//conditions:default": []}),
 )
 cc_library(
     name = "coinutils",
-    hdrs = glob(["dist/include/coin/Coin*.h*"], exclude_directories = 0),
-    strip_include_prefix = "dist/include/coin/",
-    srcs = [
-        # For Linux.
-        "dist/lib/libCoinUtils.so",
-        # For Windows.
-        # "dist/lib/libCoinUtils.lib",
-    ],
+    hdrs = glob(["include/coin/Coin*.h*"], exclude_directories = 0),
+    strip_include_prefix = "include/coin/",
+    srcs = select({
+            "@bazel_tools//src/conditions:windows": [
+                "lib/libCoinUtils.lib"],
+            "//conditions:default": [
+                "lib/libCoinUtils.so"]}),
     visibility = ["//visibility:public"],
 )
 cc_library(
     name = "clp",
-    hdrs = glob(["dist/include/coin/Clp*.h*"], exclude_directories = 0),
-    strip_include_prefix = "dist/include/coin",
-    srcs = [
-        # For Linux.
-        "dist/lib/libClp.so",
-        # For Windows.
-        # "dist/lib/libClp.lib",
-    ],
+    hdrs = glob(["include/coin/Clp*.h*"], exclude_directories = 0),
+    strip_include_prefix = "include/coin",
+    srcs = select({
+            "@bazel_tools//src/conditions:windows": [
+                "lib/libClp.lib",
+                "lib/libOsiClp.lib"],
+            "//conditions:default": [
+                "lib/libClp.so"]}),
     deps = [":coinutils", ":osi"],
     visibility = ["//visibility:public"],
 )
 cc_library(
     name = "cbc",
-    hdrs = glob(["dist/include/coin/Cbc*.h*"], exclude_directories = 0),
-    strip_include_prefix = "dist/include/coin",
-    srcs = [
-        # For Linux.
-        "dist/lib/libCbc.so",
-        "dist/lib/libOsiCbc.so",
-        # For Windows.
-        # "dist/lib/libCbc.lib",
-        # "dist/lib/libOsiCbc.lib",
-    ],
+    hdrs = glob(["include/coin/Cbc*.h*"], exclude_directories = 0),
+    strip_include_prefix = "include/coin",
+    srcs = select({
+            "@bazel_tools//src/conditions:windows": [
+                "lib/libCbc.lib",
+                "lib/libOsiCbc.lib",
+                "lib/libCgl.lib"],
+            "//conditions:default": [
+                "lib/libCbc.so",
+                "lib/libOsiCbc.so"]}),
     deps = [":coinutils", ":osi", ":clp"],
     visibility = ["//visibility:public"],
 )

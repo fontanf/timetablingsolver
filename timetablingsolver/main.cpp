@@ -14,8 +14,10 @@ int main(int argc, char *argv[])
     std::string resources_path;
     std::string event_resources_path;
     std::string certificate_path;
+    std::string scores_path;
     std::string output_path;
     std::string log_path;
+    OptimizeOptionalParameters parameters_opt;
     int verbosity_level = 0;
     int log_levelmax = 999;
     double time_limit = std::numeric_limits<double>::infinity();
@@ -30,8 +32,11 @@ int main(int argc, char *argv[])
         ("resources,", po::value<std::string>(&resources_path)->required(), "resources path")
         ("event-resources,", po::value<std::string>(&event_resources_path)->required(), "event resources path")
 
+        ("milp-mps-path,", po::value<std::string>(&parameters_opt.milp_mps_path), "MILP MPS path")
+
         ("output,o", po::value<std::string>(&output_path), "output path")
         ("certificate,c", po::value<std::string>(&certificate_path), "certificate path")
+        ("scores", po::value<std::string>(&scores_path), "scores path")
         ("log,l", po::value<std::string>(&log_path), "log path")
 
         ("time-limit,t", po::value<double>(&time_limit), "time limit (s)")
@@ -72,9 +77,9 @@ int main(int argc, char *argv[])
         .set_sigint_handler()
         ;
 
-    OptimizeOptionalParameters parameters_opt;
     parameters_opt.info = info;
-    optimize(instance, parameters_opt);
+    auto output = optimize(instance, parameters_opt);
+    output.solution.write_scores(scores_path);
 
     return 0;
 }

@@ -12,6 +12,8 @@ Output:
 
 <img src="https://github.com/fontanf/timetablingsolver/blob/main/img/output.png" height="512">
 
+<img src="https://github.com/fontanf/timetablingsolver/blob/main/img/plot.png" height="256">
+
 ## Usage
 
 Install CBC and Update its path in the `WORKSPACE` file.
@@ -37,197 +39,197 @@ Number of resources:        6
 Horizon:                    109
 Number of time steps used:  24
 
-       Event            Duration # resources
-       -----            -------- -----------
-           0       2    00:30:00           2
-           1       2    00:30:00           2
-           2       3    00:45:00           2
-           3       3    00:45:00           2
-           4       2    00:30:00           2
-           5       4    01:00:00           6
+       Event                    Name            Duration # resources
+       -----                    ----            -------- -----------
+           0           Lesson Audrey       2    00:30:00           2
+           1            Lesson Henry       2    00:30:00           2
+           2        Lesson Francesca       3    00:45:00           2
+           3           Lesson Thomas       3    00:45:00           2
+           4          Lesson Adeline       2    00:30:00           2
+           5            Group Lesson       4    01:00:00           6
 
-    Resource    # events
-    --------    --------
-           0           6
-           1           2
-           2           2
-           3           2
-           4           2
-           5           2
+    Resource                    Name    # events
+    --------                    ----    --------
+           0                 Teacher           6
+           1                  Audrey           2
+           2                   Henry           2
+           3               Francesca           2
+           4                  Thomas           2
+           5                 Adeline           2
 
-       Event    Resource
-       -----    --------
-           0           0
-           0           1
-           1           0
-           1           2
-           2           0
-           2           3
-           3           0
-           3           4
-           4           0
-           4           5
-           5           0
-           5           1
-           5           2
-           5           3
-           5           4
-           5           5
+       Event                    Name    Resource                    Name
+       -----                    ----    --------                    ----
+           0           Lesson Audrey           0                 Teacher
+           0           Lesson Audrey           1                  Audrey
+           1            Lesson Henry           0                 Teacher
+           1            Lesson Henry           2                   Henry
+           2        Lesson Francesca           0                 Teacher
+           2        Lesson Francesca           3               Francesca
+           3           Lesson Thomas           0                 Teacher
+           3           Lesson Thomas           4                  Thomas
+           4          Lesson Adeline           0                 Teacher
+           4          Lesson Adeline           5                 Adeline
+           5            Group Lesson           0                 Teacher
+           5            Group Lesson           1                  Audrey
+           5            Group Lesson           2                   Henry
+           5            Group Lesson           3               Francesca
+           5            Group Lesson           4                  Thomas
+           5            Group Lesson           5                 Adeline
 
-    Resource                                        Time       Score
-    --------                                        ----       -----
-           0       0            Thu Sep 07 16:00:00 2023           0
-           0       1            Thu Sep 07 16:15:00 2023           0
-           0       2            Thu Sep 07 16:30:00 2023           0
-           0       3            Thu Sep 07 16:45:00 2023           0
-           0       4            Thu Sep 07 17:00:00 2023           0
-           0       5            Thu Sep 07 17:15:00 2023           0
-           0       6            Thu Sep 07 17:30:00 2023           0
-           0       7            Thu Sep 07 17:45:00 2023           0
-           0       8            Thu Sep 07 18:00:00 2023          10
-           0       9            Thu Sep 07 18:15:00 2023          10
-           0      10            Thu Sep 07 18:30:00 2023          10
-           0      11            Thu Sep 07 18:45:00 2023          10
-           0      96            Fri Sep 08 16:00:00 2023           0
-           0      97            Fri Sep 08 16:15:00 2023           0
-           0      98            Fri Sep 08 16:30:00 2023           0
-           0      99            Fri Sep 08 16:45:00 2023           0
-           0     100            Fri Sep 08 17:00:00 2023           0
-           0     101            Fri Sep 08 17:15:00 2023           0
-           0     102            Fri Sep 08 17:30:00 2023           0
-           0     103            Fri Sep 08 17:45:00 2023           0
-           0     104            Fri Sep 08 18:00:00 2023          10
-           0     105            Fri Sep 08 18:15:00 2023          10
-           0     106            Fri Sep 08 18:30:00 2023          10
-           0     107            Fri Sep 08 18:45:00 2023          10
-           1       0            Thu Sep 07 16:00:00 2023           0
-           1       1            Thu Sep 07 16:15:00 2023           0
-           1       2            Thu Sep 07 16:30:00 2023           0
-           1       3            Thu Sep 07 16:45:00 2023           0
-           1       4            Thu Sep 07 17:00:00 2023           3
-           1       5            Thu Sep 07 17:15:00 2023           3
-           1       6            Thu Sep 07 17:30:00 2023           3
-           1       7            Thu Sep 07 17:45:00 2023           3
-           1       8            Thu Sep 07 18:00:00 2023           3
-           1       9            Thu Sep 07 18:15:00 2023           3
-           1      10            Thu Sep 07 18:30:00 2023           3
-           1      11            Thu Sep 07 18:45:00 2023           3
-           1      96            Fri Sep 08 16:00:00 2023           3
-           1      97            Fri Sep 08 16:15:00 2023           3
-           1      98            Fri Sep 08 16:30:00 2023           3
-           1      99            Fri Sep 08 16:45:00 2023           3
-           1     100            Fri Sep 08 17:00:00 2023           3
-           1     101            Fri Sep 08 17:15:00 2023           3
-           1     102            Fri Sep 08 17:30:00 2023           3
-           1     103            Fri Sep 08 17:45:00 2023           3
-           1     104            Fri Sep 08 18:00:00 2023           1
-           1     105            Fri Sep 08 18:15:00 2023           1
-           1     106            Fri Sep 08 18:30:00 2023           1
-           1     107            Fri Sep 08 18:45:00 2023           1
-           2       0            Thu Sep 07 16:00:00 2023           0
-           2       1            Thu Sep 07 16:15:00 2023           0
-           2       2            Thu Sep 07 16:30:00 2023           0
-           2       3            Thu Sep 07 16:45:00 2023           0
-           2       4            Thu Sep 07 17:00:00 2023           3
-           2       5            Thu Sep 07 17:15:00 2023           3
-           2       6            Thu Sep 07 17:30:00 2023           3
-           2       7            Thu Sep 07 17:45:00 2023           3
-           2       8            Thu Sep 07 18:00:00 2023           3
-           2       9            Thu Sep 07 18:15:00 2023           3
-           2      10            Thu Sep 07 18:30:00 2023           3
-           2      11            Thu Sep 07 18:45:00 2023           3
-           2      96            Fri Sep 08 16:00:00 2023           1
-           2      97            Fri Sep 08 16:15:00 2023           1
-           2      98            Fri Sep 08 16:30:00 2023           1
-           2      99            Fri Sep 08 16:45:00 2023           1
-           2     100            Fri Sep 08 17:00:00 2023           1
-           2     101            Fri Sep 08 17:15:00 2023           1
-           2     102            Fri Sep 08 17:30:00 2023           1
-           2     103            Fri Sep 08 17:45:00 2023           1
-           2     104            Fri Sep 08 18:00:00 2023           3
-           2     105            Fri Sep 08 18:15:00 2023           3
-           2     106            Fri Sep 08 18:30:00 2023           3
-           2     107            Fri Sep 08 18:45:00 2023           3
-           3       0            Thu Sep 07 16:00:00 2023           3
-           3       1            Thu Sep 07 16:15:00 2023           3
-           3       2            Thu Sep 07 16:30:00 2023           3
-           3       3            Thu Sep 07 16:45:00 2023           3
-           3       4            Thu Sep 07 17:00:00 2023           3
-           3       5            Thu Sep 07 17:15:00 2023           3
-           3       6            Thu Sep 07 17:30:00 2023           3
-           3       7            Thu Sep 07 17:45:00 2023           3
-           3       8            Thu Sep 07 18:00:00 2023           3
-           3       9            Thu Sep 07 18:15:00 2023           3
-           3      10            Thu Sep 07 18:30:00 2023           3
-           3      11            Thu Sep 07 18:45:00 2023           3
-           3      96            Fri Sep 08 16:00:00 2023           1
-           3      97            Fri Sep 08 16:15:00 2023           1
-           3      98            Fri Sep 08 16:30:00 2023           1
-           3      99            Fri Sep 08 16:45:00 2023           1
-           3     100            Fri Sep 08 17:00:00 2023           0
-           3     101            Fri Sep 08 17:15:00 2023           0
-           3     102            Fri Sep 08 17:30:00 2023           0
-           3     103            Fri Sep 08 17:45:00 2023           0
-           3     104            Fri Sep 08 18:00:00 2023           3
-           3     105            Fri Sep 08 18:15:00 2023           3
-           3     106            Fri Sep 08 18:30:00 2023           3
-           3     107            Fri Sep 08 18:45:00 2023           3
-           4       0            Thu Sep 07 16:00:00 2023           3
-           4       1            Thu Sep 07 16:15:00 2023           3
-           4       2            Thu Sep 07 16:30:00 2023           3
-           4       3            Thu Sep 07 16:45:00 2023           3
-           4       4            Thu Sep 07 17:00:00 2023           1
-           4       5            Thu Sep 07 17:15:00 2023           1
-           4       6            Thu Sep 07 17:30:00 2023           1
-           4       7            Thu Sep 07 17:45:00 2023           1
-           4       8            Thu Sep 07 18:00:00 2023           1
-           4       9            Thu Sep 07 18:15:00 2023           1
-           4      10            Thu Sep 07 18:30:00 2023           1
-           4      11            Thu Sep 07 18:45:00 2023           1
-           4      96            Fri Sep 08 16:00:00 2023           3
-           4      97            Fri Sep 08 16:15:00 2023           3
-           4      98            Fri Sep 08 16:30:00 2023           3
-           4      99            Fri Sep 08 16:45:00 2023           3
-           4     100            Fri Sep 08 17:00:00 2023           0
-           4     101            Fri Sep 08 17:15:00 2023           0
-           4     102            Fri Sep 08 17:30:00 2023           0
-           4     103            Fri Sep 08 17:45:00 2023           0
-           4     104            Fri Sep 08 18:00:00 2023           3
-           4     105            Fri Sep 08 18:15:00 2023           3
-           4     106            Fri Sep 08 18:30:00 2023           3
-           4     107            Fri Sep 08 18:45:00 2023           3
-           5       0            Thu Sep 07 16:00:00 2023           3
-           5       1            Thu Sep 07 16:15:00 2023           3
-           5       2            Thu Sep 07 16:30:00 2023           3
-           5       3            Thu Sep 07 16:45:00 2023           3
-           5       4            Thu Sep 07 17:00:00 2023           1
-           5       5            Thu Sep 07 17:15:00 2023           1
-           5       6            Thu Sep 07 17:30:00 2023           1
-           5       7            Thu Sep 07 17:45:00 2023           1
-           5       8            Thu Sep 07 18:00:00 2023           1
-           5       9            Thu Sep 07 18:15:00 2023           1
-           5      10            Thu Sep 07 18:30:00 2023           1
-           5      11            Thu Sep 07 18:45:00 2023           1
-           5      96            Fri Sep 08 16:00:00 2023           3
-           5      97            Fri Sep 08 16:15:00 2023           3
-           5      98            Fri Sep 08 16:30:00 2023           3
-           5      99            Fri Sep 08 16:45:00 2023           3
-           5     100            Fri Sep 08 17:00:00 2023           0
-           5     101            Fri Sep 08 17:15:00 2023           0
-           5     102            Fri Sep 08 17:30:00 2023           0
-           5     103            Fri Sep 08 17:45:00 2023           0
-           5     104            Fri Sep 08 18:00:00 2023           0
-           5     105            Fri Sep 08 18:15:00 2023           0
-           5     106            Fri Sep 08 18:30:00 2023           0
-           5     107            Fri Sep 08 18:45:00 2023           0
+    Resource                    Name                                        Time       Score
+    --------                    ----                                        ----       -----
+           0                 Teacher       0            Thu Sep 07 16:00:00 2023           0
+           0                 Teacher       1            Thu Sep 07 16:15:00 2023           0
+           0                 Teacher       2            Thu Sep 07 16:30:00 2023           0
+           0                 Teacher       3            Thu Sep 07 16:45:00 2023           0
+           0                 Teacher       4            Thu Sep 07 17:00:00 2023           0
+           0                 Teacher       5            Thu Sep 07 17:15:00 2023           0
+           0                 Teacher       6            Thu Sep 07 17:30:00 2023           0
+           0                 Teacher       7            Thu Sep 07 17:45:00 2023           0
+           0                 Teacher       8            Thu Sep 07 18:00:00 2023          10
+           0                 Teacher       9            Thu Sep 07 18:15:00 2023          10
+           0                 Teacher      10            Thu Sep 07 18:30:00 2023          10
+           0                 Teacher      11            Thu Sep 07 18:45:00 2023          10
+           0                 Teacher      96            Fri Sep 08 16:00:00 2023           0
+           0                 Teacher      97            Fri Sep 08 16:15:00 2023           0
+           0                 Teacher      98            Fri Sep 08 16:30:00 2023           0
+           0                 Teacher      99            Fri Sep 08 16:45:00 2023           0
+           0                 Teacher     100            Fri Sep 08 17:00:00 2023           0
+           0                 Teacher     101            Fri Sep 08 17:15:00 2023           0
+           0                 Teacher     102            Fri Sep 08 17:30:00 2023           0
+           0                 Teacher     103            Fri Sep 08 17:45:00 2023           0
+           0                 Teacher     104            Fri Sep 08 18:00:00 2023          10
+           0                 Teacher     105            Fri Sep 08 18:15:00 2023          10
+           0                 Teacher     106            Fri Sep 08 18:30:00 2023          10
+           0                 Teacher     107            Fri Sep 08 18:45:00 2023          10
+           1                  Audrey       0            Thu Sep 07 16:00:00 2023           0
+           1                  Audrey       1            Thu Sep 07 16:15:00 2023           0
+           1                  Audrey       2            Thu Sep 07 16:30:00 2023           0
+           1                  Audrey       3            Thu Sep 07 16:45:00 2023           0
+           1                  Audrey       4            Thu Sep 07 17:00:00 2023           3
+           1                  Audrey       5            Thu Sep 07 17:15:00 2023           3
+           1                  Audrey       6            Thu Sep 07 17:30:00 2023           3
+           1                  Audrey       7            Thu Sep 07 17:45:00 2023           3
+           1                  Audrey       8            Thu Sep 07 18:00:00 2023           3
+           1                  Audrey       9            Thu Sep 07 18:15:00 2023           3
+           1                  Audrey      10            Thu Sep 07 18:30:00 2023           3
+           1                  Audrey      11            Thu Sep 07 18:45:00 2023           3
+           1                  Audrey      96            Fri Sep 08 16:00:00 2023           3
+           1                  Audrey      97            Fri Sep 08 16:15:00 2023           3
+           1                  Audrey      98            Fri Sep 08 16:30:00 2023           3
+           1                  Audrey      99            Fri Sep 08 16:45:00 2023           3
+           1                  Audrey     100            Fri Sep 08 17:00:00 2023           3
+           1                  Audrey     101            Fri Sep 08 17:15:00 2023           3
+           1                  Audrey     102            Fri Sep 08 17:30:00 2023           3
+           1                  Audrey     103            Fri Sep 08 17:45:00 2023           3
+           1                  Audrey     104            Fri Sep 08 18:00:00 2023           1
+           1                  Audrey     105            Fri Sep 08 18:15:00 2023           1
+           1                  Audrey     106            Fri Sep 08 18:30:00 2023           1
+           1                  Audrey     107            Fri Sep 08 18:45:00 2023           1
+           2                   Henry       0            Thu Sep 07 16:00:00 2023           0
+           2                   Henry       1            Thu Sep 07 16:15:00 2023           0
+           2                   Henry       2            Thu Sep 07 16:30:00 2023           0
+           2                   Henry       3            Thu Sep 07 16:45:00 2023           0
+           2                   Henry       4            Thu Sep 07 17:00:00 2023           3
+           2                   Henry       5            Thu Sep 07 17:15:00 2023           3
+           2                   Henry       6            Thu Sep 07 17:30:00 2023           3
+           2                   Henry       7            Thu Sep 07 17:45:00 2023           3
+           2                   Henry       8            Thu Sep 07 18:00:00 2023           3
+           2                   Henry       9            Thu Sep 07 18:15:00 2023           3
+           2                   Henry      10            Thu Sep 07 18:30:00 2023           3
+           2                   Henry      11            Thu Sep 07 18:45:00 2023           3
+           2                   Henry      96            Fri Sep 08 16:00:00 2023           1
+           2                   Henry      97            Fri Sep 08 16:15:00 2023           1
+           2                   Henry      98            Fri Sep 08 16:30:00 2023           1
+           2                   Henry      99            Fri Sep 08 16:45:00 2023           1
+           2                   Henry     100            Fri Sep 08 17:00:00 2023           1
+           2                   Henry     101            Fri Sep 08 17:15:00 2023           1
+           2                   Henry     102            Fri Sep 08 17:30:00 2023           1
+           2                   Henry     103            Fri Sep 08 17:45:00 2023           1
+           2                   Henry     104            Fri Sep 08 18:00:00 2023           3
+           2                   Henry     105            Fri Sep 08 18:15:00 2023           3
+           2                   Henry     106            Fri Sep 08 18:30:00 2023           3
+           2                   Henry     107            Fri Sep 08 18:45:00 2023           3
+           3               Francesca       0            Thu Sep 07 16:00:00 2023           3
+           3               Francesca       1            Thu Sep 07 16:15:00 2023           3
+           3               Francesca       2            Thu Sep 07 16:30:00 2023           3
+           3               Francesca       3            Thu Sep 07 16:45:00 2023           3
+           3               Francesca       4            Thu Sep 07 17:00:00 2023           3
+           3               Francesca       5            Thu Sep 07 17:15:00 2023           3
+           3               Francesca       6            Thu Sep 07 17:30:00 2023           3
+           3               Francesca       7            Thu Sep 07 17:45:00 2023           3
+           3               Francesca       8            Thu Sep 07 18:00:00 2023           3
+           3               Francesca       9            Thu Sep 07 18:15:00 2023           3
+           3               Francesca      10            Thu Sep 07 18:30:00 2023           3
+           3               Francesca      11            Thu Sep 07 18:45:00 2023           3
+           3               Francesca      96            Fri Sep 08 16:00:00 2023           1
+           3               Francesca      97            Fri Sep 08 16:15:00 2023           1
+           3               Francesca      98            Fri Sep 08 16:30:00 2023           1
+           3               Francesca      99            Fri Sep 08 16:45:00 2023           1
+           3               Francesca     100            Fri Sep 08 17:00:00 2023           0
+           3               Francesca     101            Fri Sep 08 17:15:00 2023           0
+           3               Francesca     102            Fri Sep 08 17:30:00 2023           0
+           3               Francesca     103            Fri Sep 08 17:45:00 2023           0
+           3               Francesca     104            Fri Sep 08 18:00:00 2023           3
+           3               Francesca     105            Fri Sep 08 18:15:00 2023           3
+           3               Francesca     106            Fri Sep 08 18:30:00 2023           3
+           3               Francesca     107            Fri Sep 08 18:45:00 2023           3
+           4                  Thomas       0            Thu Sep 07 16:00:00 2023           3
+           4                  Thomas       1            Thu Sep 07 16:15:00 2023           3
+           4                  Thomas       2            Thu Sep 07 16:30:00 2023           3
+           4                  Thomas       3            Thu Sep 07 16:45:00 2023           3
+           4                  Thomas       4            Thu Sep 07 17:00:00 2023           1
+           4                  Thomas       5            Thu Sep 07 17:15:00 2023           1
+           4                  Thomas       6            Thu Sep 07 17:30:00 2023           1
+           4                  Thomas       7            Thu Sep 07 17:45:00 2023           1
+           4                  Thomas       8            Thu Sep 07 18:00:00 2023           1
+           4                  Thomas       9            Thu Sep 07 18:15:00 2023           1
+           4                  Thomas      10            Thu Sep 07 18:30:00 2023           1
+           4                  Thomas      11            Thu Sep 07 18:45:00 2023           1
+           4                  Thomas      96            Fri Sep 08 16:00:00 2023           3
+           4                  Thomas      97            Fri Sep 08 16:15:00 2023           3
+           4                  Thomas      98            Fri Sep 08 16:30:00 2023           3
+           4                  Thomas      99            Fri Sep 08 16:45:00 2023           3
+           4                  Thomas     100            Fri Sep 08 17:00:00 2023           0
+           4                  Thomas     101            Fri Sep 08 17:15:00 2023           0
+           4                  Thomas     102            Fri Sep 08 17:30:00 2023           0
+           4                  Thomas     103            Fri Sep 08 17:45:00 2023           0
+           4                  Thomas     104            Fri Sep 08 18:00:00 2023           3
+           4                  Thomas     105            Fri Sep 08 18:15:00 2023           3
+           4                  Thomas     106            Fri Sep 08 18:30:00 2023           3
+           4                  Thomas     107            Fri Sep 08 18:45:00 2023           3
+           5                 Adeline       0            Thu Sep 07 16:00:00 2023           3
+           5                 Adeline       1            Thu Sep 07 16:15:00 2023           3
+           5                 Adeline       2            Thu Sep 07 16:30:00 2023           3
+           5                 Adeline       3            Thu Sep 07 16:45:00 2023           3
+           5                 Adeline       4            Thu Sep 07 17:00:00 2023           1
+           5                 Adeline       5            Thu Sep 07 17:15:00 2023           1
+           5                 Adeline       6            Thu Sep 07 17:30:00 2023           1
+           5                 Adeline       7            Thu Sep 07 17:45:00 2023           1
+           5                 Adeline       8            Thu Sep 07 18:00:00 2023           1
+           5                 Adeline       9            Thu Sep 07 18:15:00 2023           1
+           5                 Adeline      10            Thu Sep 07 18:30:00 2023           1
+           5                 Adeline      11            Thu Sep 07 18:45:00 2023           1
+           5                 Adeline      96            Fri Sep 08 16:00:00 2023           3
+           5                 Adeline      97            Fri Sep 08 16:15:00 2023           3
+           5                 Adeline      98            Fri Sep 08 16:30:00 2023           3
+           5                 Adeline      99            Fri Sep 08 16:45:00 2023           3
+           5                 Adeline     100            Fri Sep 08 17:00:00 2023           0
+           5                 Adeline     101            Fri Sep 08 17:15:00 2023           0
+           5                 Adeline     102            Fri Sep 08 17:30:00 2023           0
+           5                 Adeline     103            Fri Sep 08 17:45:00 2023           0
+           5                 Adeline     104            Fri Sep 08 18:00:00 2023           0
+           5                 Adeline     105            Fri Sep 08 18:15:00 2023           0
+           5                 Adeline     106            Fri Sep 08 18:30:00 2023           0
+           5                 Adeline     107            Fri Sep 08 18:45:00 2023           0
 
        T (s)    # events       Score                 Comment
        -----    --------       -----                 -------
-       0.020           6          12                        
+       0.021           6          12                        
 
 Final statistics
 ----------------
-Time (s):                     0.0204497
+Time (s):                     0.0207195
 
 Solution
 --------

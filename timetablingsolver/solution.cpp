@@ -101,3 +101,31 @@ void Solution::write(std::string certificate_path) const
     }
     f.close();
 }
+
+void Solution::write_scores(std::string file_path) const
+{
+    if (file_path.empty())
+        return;
+    std::ofstream f(file_path);
+    if (!f.good()) {
+        throw std::runtime_error(
+                "Unable to open file \"" + file_path + "\".");
+    }
+
+    f << "Resource,Event,Score" << std::endl;
+    for (ResourceId resource_id = 0;
+            resource_id < instance().number_of_resources();
+            ++resource_id) {
+        const Resource& resource = instance().resource(resource_id);
+        for (EventId event_id: resource.event_ids) {
+            const SolutionEvent& solution_event = this->event(event_id);
+            const Event& event = instance().event(event_id);
+            f
+                << resource.name << ","
+                << event.name << ","
+                << instance().compute_score(resource_id, event_id, solution_event.start) << std::endl;
+        }
+    }
+    f.close();
+
+}
