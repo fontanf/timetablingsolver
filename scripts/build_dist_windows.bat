@@ -6,6 +6,7 @@ chdir %~dp0
 chdir ..
 
 rmdir /s /q "%TARGET_DIR%"
+del "%TARGET_DIR%.zip"
 mkdir "%TARGET_DIR%"
 mkdir "%TARGET_DIR%\bin"
 mkdir "%TARGET_DIR%\data"

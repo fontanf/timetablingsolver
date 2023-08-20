@@ -2,12 +2,14 @@
 
 mkdir -p "./dist"
 
-TARGET_DIR="./dist/TimetablingSolver-linux"
+NAME="TimetablingSolver-linux"
+TARGET_DIR="./dist/${NAME}"
 
 set -x
 cd "$(dirname "$0")"
 cd ..
-rm -r "${TARGET_DIR}"
+rm -rf "${TARGET_DIR}"
+rm -rf "${TARGET_DIR}.zip"
 mkdir "${TARGET_DIR}"
 mkdir "${TARGET_DIR}/bin"
 mkdir "${TARGET_DIR}/data"
@@ -25,4 +27,5 @@ chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
 pyinstaller -F "./scripts/visualizer.py"
 mv "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
 
-zip -R "${TARGET_DIR}.zip" "${TARGET_DIR}"
+cd "./dist"
+zip -r "${NAME}" "${NAME}"
