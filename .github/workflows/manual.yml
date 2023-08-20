@@ -13,10 +13,23 @@ jobs:
   build_dist_linux:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
     # Runs a single command using the runners shell
+    - name: Install plotly
+      run: pip3 install plotly
+    - name: Install pyinstaller
+      run: pip3 install pyinstaller
+    - name: Install nauty
+      run: sudo apt-get install -y libnauty2-dev
     - name: Build dist Linux
       run: ./scripts/build_dist_linux.sh
