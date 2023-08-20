@@ -37,6 +37,12 @@ jobs:
         name: TimetablingSolver-linux
         path:
           dist/TimetablingSolver-linux.zip
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: TimetablingSolver-linux-fr
+        path:
+          dist/TimetablingSolver-linux-fr.zip
 
   build_dist_macos:
     runs-on: macos-12
@@ -68,3 +74,9 @@ jobs:
         name: TimetablingSolver-macos
         path:
           dist/TimetablingSolver-macos.zip
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: TimetablingSolver-macos-fr
+        path:
+          dist/TimetablingSolver-macos-fr.zip
