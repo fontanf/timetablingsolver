@@ -1,6 +1,6 @@
 # This is a basic workflow that is manually triggered
 
-name: Manual workflow
+name: Build
 
 # Controls when the action will run. Workflow runs when manually triggered using the UI
 # or API.
@@ -100,6 +100,8 @@ jobs:
       run: pip3 install pandas
     - name: Install pyinstaller
       run: pip3 install pyinstaller
+    - name: Build
+      run: bazel build --cxxopt=/MT -- //...
     - name: Build dist Windows
       run: ./scripts/build_dist_windows.bat
     - name: Archive production artifacts

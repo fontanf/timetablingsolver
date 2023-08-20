@@ -4,10 +4,12 @@ chdir %~dp0
 chdir ..
 if not exist ".\dist" mkdir ".\dist"
 
+:: Build executable.
+:: Uncomment when it will be fixed.
+:: bazel build --cxxopt=/MT -- //...
+
 :: Build visulizer.
 pyinstaller -F ".\scripts\visualizer.py"
-:: Build executable.
-bazel build --cxxopt=/MT -- //...
 
 call :build_dist_function "example", ""
 call :build_dist_function "example_fr", "-fr"

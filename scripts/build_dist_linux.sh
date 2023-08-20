@@ -7,6 +7,7 @@ mkdir -p "./dist"
 
 # Build executable.
 bazel build -- //...
+
 # Build visualizer.
 pyinstaller -F "./scripts/visualizer.py"
 
@@ -22,13 +23,17 @@ build_dist_function()
     rm -rf "${TARGET_DIR}.zip"
     mkdir "${TARGET_DIR}"
     mkdir "${TARGET_DIR}/bin"
+
     # Copy script.
     cp "./scripts/run.sh" "${TARGET_DIR}/run.sh"
+
     # Copy data.
     cp -r "./data/${DATA_DIR}" "${TARGET_DIR}/data"
+
     # Copy executable.
     cp "./bazel-bin/timetablingsolver/main" "${TARGET_DIR}/bin/TimetablingSolver"
     chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
+
     # Copy visualizer.
     cp "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
 
