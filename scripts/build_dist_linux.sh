@@ -31,7 +31,7 @@ build_dist_function()
     cp "./bazel-bin/timetablingsolver/main" "${TARGET_DIR}/bin/TimetablingSolver"
     chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
     # Copy visualizer.
-    mv "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
+    cp "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
 
     cd "./dist"
     zip -r "${NAME}" "${NAME}"
@@ -40,3 +40,4 @@ build_dist_function()
 
 build_dist_function "example" ""
 build_dist_function "example_fr" "-fr"
+rm "./dist/visualizer"

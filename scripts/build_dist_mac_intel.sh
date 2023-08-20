@@ -37,7 +37,7 @@ build_dist_function()
     cp ./bazel-timetablingsolver/external/coinutils_darwin/lib/*.dylib "${TARGET_DIR}/lib/"
     cp ./bazel-timetablingsolver/external/osi_darwin/lib/*.dylib "${TARGET_DIR}/lib/"
     # Copy visualizer.
-    mv "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
+    cp "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
 
     cd "./dist"
     zip -r "${NAME}" "${NAME}"
@@ -46,3 +46,4 @@ build_dist_function()
 
 build_dist_function "example" ""
 build_dist_function "example_fr" "-fr"
+rm "./dist/visualizer"
