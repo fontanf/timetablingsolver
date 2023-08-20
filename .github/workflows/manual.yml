@@ -33,3 +33,9 @@ jobs:
       run: sudo apt-get install -y libnauty2-dev
     - name: Build dist Linux
       run: ./scripts/build_dist_linux.sh
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-linux
+        path:
+          dist/TimetablingSolver-linux.zip
