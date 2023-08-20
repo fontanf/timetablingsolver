@@ -10,8 +10,6 @@ del "%TARGET_DIR%.zip"
 mkdir "%TARGET_DIR%"
 mkdir "%TARGET_DIR%\bin"
 mkdir "%TARGET_DIR%\data"
-mkdir "%TARGET_DIR%\log"
-mkdir "%TARGET_DIR%\out"
 :: Copy script.
 copy ".\scripts\run.bat" ".\dist\windows\run.bat"
 :: Copy data.

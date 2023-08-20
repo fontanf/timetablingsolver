@@ -1,4 +1,6 @@
 #!/bin/sh
+mkdir -p log
+mkdir -p out
 ./bin/TimetablingSolver -v 2 \
     --parameters "data/parameters.csv" \
     --events "data/events.csv" \

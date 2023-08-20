@@ -14,8 +14,6 @@ mkdir "${TARGET_DIR}"
 mkdir "${TARGET_DIR}/bin"
 mkdir "${TARGET_DIR}/data"
 mkdir "${TARGET_DIR}/lib"
-mkdir "${TARGET_DIR}/log"
-mkdir "${TARGET_DIR}/out"
 # Copy script.
 cp "./scripts/run.mac.sh" "${TARGET_DIR}/run.sh"
 # Copy data.

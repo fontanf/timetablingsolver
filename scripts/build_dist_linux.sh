@@ -13,8 +13,6 @@ rm -rf "${TARGET_DIR}.zip"
 mkdir "${TARGET_DIR}"
 mkdir "${TARGET_DIR}/bin"
 mkdir "${TARGET_DIR}/data"
-mkdir "${TARGET_DIR}/log"
-mkdir "${TARGET_DIR}/out"
 # Copy script.
 cp "./scripts/run.sh" "${TARGET_DIR}/run.sh"
 # Copy data.

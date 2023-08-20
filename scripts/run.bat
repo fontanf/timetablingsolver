@@ -1,3 +1,5 @@
+if not exist ".\log" mkdir ".\log"
+if not exist ".\out" mkdir ".\out"
 .\bin\TimetablingSolver -v 2 ^
     --parameters "data\parameters.csv" ^
     --events "data\events.csv" ^
