@@ -1,3 +1,5 @@
+@echo on
+
 chdir %~dp0
 chdir ..
 if not exist ".\dist" mkdir ".\dist"
@@ -26,13 +28,13 @@ del "%TARGET_DIR%.zip"
 mkdir "%TARGET_DIR%"
 mkdir "%TARGET_DIR%\bin"
 :: Copy script.
-copy ".\scripts\run.bat" ".\dist\windows\run.bat"
+copy ".\scripts\run.bat" "%TARGET_DIR%\run.bat"
 :: Copy data.
-copy ".\data\%DATA_DIR%" ".\dist\windows\data"
+copy ".\data\%DATA_DIR%" "%TARGET_DIR%\data"
 :: Build and copy executable.
-copy ".\bazel-bin\timetablingsolver\main.exe" ".\dist\windows\bin\TimetablingSolver.exe"
+copy ".\bazel-bin\timetablingsolver\main.exe" "%TARGET_DIR%\bin\TimetablingSolver.exe"
 :: Copy visualizer.
-copy ".\dist\visualizer.exe" ".\dist\windows\bin\visualizer.exe"
+copy ".\dist\visualizer.exe" "%TARGET_DIR%\bin\visualizer.exe"
 
 chdir ".\dist"
 zip -r "%TARGET_DIR%.zip" "%TARGET_DIR%"
