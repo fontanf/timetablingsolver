@@ -19,7 +19,7 @@ set DATA_DIR=%~1
 set SUFFIX=%~2
 
 set NAME="TimetablingSolver-windows%SUFFIX%"
-set TARGET_DIR="./dist/%NAME%"
+set TARGET_DIR=".\dist\%NAME%"
 
 rmdir /s /q "%TARGET_DIR%"
 del "%TARGET_DIR%.zip"
@@ -34,6 +34,8 @@ copy ".\bazel-bin\timetablingsolver\main.exe" ".\dist\windows\bin\TimetablingSol
 :: Copy visualizer.
 copy ".\dist\visualizer.exe" ".\dist\windows\bin\visualizer.exe"
 
-tar.exe -a -cf "%TARGET_DIR%.zip" "%TARGET_DIR%"
+chdir ".\dist"
+zip -r "%TARGET_DIR%.zip" "%TARGET_DIR%"
+chdir ..
 
 EXIT /B 0
