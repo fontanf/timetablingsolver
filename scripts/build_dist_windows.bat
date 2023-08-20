@@ -20,24 +20,25 @@ EXIT /B %ERRORLEVEL%
 set DATA_DIR=%~1
 set SUFFIX=%~2
 
-set NAME="TimetablingSolver-windows%SUFFIX%"
-set TARGET_DIR=".\dist\%NAME%"
+set "NAME=TimetablingSolver-windows%SUFFIX%"
+set "TARGET_DIR=.\dist\%NAME%"
 
 rmdir /s /q "%TARGET_DIR%"
 del "%TARGET_DIR%.zip"
 mkdir "%TARGET_DIR%"
 mkdir "%TARGET_DIR%\bin"
+mkdir "%TARGET_DIR%\data"
 :: Copy script.
 copy ".\scripts\run.bat" "%TARGET_DIR%\run.bat"
 :: Copy data.
-copy ".\data\%DATA_DIR%" "%TARGET_DIR%\data"
+robocopy /s /e ".\data\%DATA_DIR%" "%TARGET_DIR%\data"
 :: Build and copy executable.
 copy ".\bazel-bin\timetablingsolver\main.exe" "%TARGET_DIR%\bin\TimetablingSolver.exe"
 :: Copy visualizer.
 copy ".\dist\visualizer.exe" "%TARGET_DIR%\bin\visualizer.exe"
 
 chdir ".\dist"
-zip -r "%TARGET_DIR%.zip" "%TARGET_DIR%"
+zip -r "%NAME%.zip" "%NAME%"
 chdir ..
 
 EXIT /B 0
