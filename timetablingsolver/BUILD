@@ -1,4 +1,25 @@
-config_setting(name = "cbc_build", values = {"define": "cbc=true"}, visibility = ["//visibility:public"])
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+config_setting(
+        name = "cbc_build",
+        values = {"define": "cbc=true"},
+        visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    name = "cbc_linux",
+    match_all = [":cbc_build", "@bazel_tools//src/conditions:linux"],
+)
+
+selects.config_setting_group(
+    name = "cbc_darwin",
+    match_all = [":cbc_build", "@bazel_tools//src/conditions:darwin"],
+)
+
+selects.config_setting_group(
+    name = "cbc_windows",
+    match_all = [":cbc_build", "@bazel_tools//src/conditions:windows"],
+)
 
 load("//timetablingsolver:variables.bzl", "STDCPP",
          "CBC_COPTS", "CBC_DEP")
