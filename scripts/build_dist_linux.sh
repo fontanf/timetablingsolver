@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mkdir -p "./dist"
+
 VERSION="0.2"
 TARGET_DIR="./dist/TimetablingSolver-${VERSION}-linux"
 

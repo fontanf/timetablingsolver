@@ -1,3 +1,5 @@
+if not exist ".\dist" mkdir ".\dist"
+
 set VERSION="0.2"
 set TARGET_DIR="./dist/TimetablingSolver-${VERSION}-windows"
 
