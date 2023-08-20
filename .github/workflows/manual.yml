@@ -60,6 +60,14 @@ jobs:
       run: pip3 install pyinstaller
     - name: Install nauty
       run: brew install nauty
+    - name: Install nauty
+      run: brew install nauty
+    - name: Link nauty
+      run: brew link nauty
+    - name: Print /usr/local/lib content
+      run: ls /usr/local/lib
+    - name: Print /opt/homebrew/lib content
+      run: ls /opt/homebrew/lib
     - name: Update LIBRARY_PATH
       run: export LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib
     - name: Build dist Mac OS
