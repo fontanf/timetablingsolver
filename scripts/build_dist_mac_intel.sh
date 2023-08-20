@@ -19,7 +19,7 @@ cp "./scripts/run.mac.sh" "${TARGET_DIR}/run.sh"
 # Copy data.
 cp ./data/example/*.csv "${TARGET_DIR}/data/"
 # Build and copy executable.
-LIBRARY_PATH=/usr/local/lib bazel build -- //...
+bazel build --linkopt="-L/usr/local/lib" -- //...
 cp "./bazel-bin/timetablingsolver/main" "${TARGET_DIR}/bin/TimetablingSolver"
 chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
 # Copy lib.
