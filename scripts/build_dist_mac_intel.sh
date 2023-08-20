@@ -2,7 +2,7 @@
 
 mkdir -p "./dist"
 
-NAME="TimetablingSolver-darwin"
+NAME="TimetablingSolver-macos"
 TARGET_DIR="./dist/${NAME}"
 
 set -x
