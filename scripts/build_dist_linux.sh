@@ -1,29 +1,41 @@
 #!/bin/bash
 
-mkdir -p "./dist"
-
-NAME="TimetablingSolver-linux"
-TARGET_DIR="./dist/${NAME}"
-
 set -x
 cd "$(dirname "$0")"
 cd ..
-rm -rf "${TARGET_DIR}"
-rm -rf "${TARGET_DIR}.zip"
-mkdir "${TARGET_DIR}"
-mkdir "${TARGET_DIR}/bin"
-mkdir "${TARGET_DIR}/data"
-# Copy script.
-cp "./scripts/run.sh" "${TARGET_DIR}/run.sh"
-# Copy data.
-cp ./data/example/*.csv "${TARGET_DIR}/data/"
-# Build and copy executable.
-bazel build -- //...
-cp "./bazel-bin/timetablingsolver/main" "${TARGET_DIR}/bin/TimetablingSolver"
-chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
-# Copy visualizer.
-pyinstaller -F "./scripts/visualizer.py"
-mv "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
+mkdir -p "./dist"
 
-cd "./dist"
-zip -r "${NAME}" "${NAME}"
+# Build executable.
+bazel build -- //...
+# Build visualizer.
+pyinstaller -F "./scripts/visualizer.py"
+
+build_dist_function()
+{
+    DATA_DIR=$1
+    SUFFIX=$2
+
+    NAME="TimetablingSolver-linux${SUFFIX}"
+    TARGET_DIR="./dist/${NAME}"
+
+    rm -rf "${TARGET_DIR}"
+    rm -rf "${TARGET_DIR}.zip"
+    mkdir "${TARGET_DIR}"
+    mkdir "${TARGET_DIR}/bin"
+    mkdir "${TARGET_DIR}/data"
+    # Copy script.
+    cp "./scripts/run.sh" "${TARGET_DIR}/run.sh"
+    # Copy data.
+    cp -r "./data/${DATA_DIR}" "${TARGET_DIR}/data"
+    # Copy executable.
+    cp "./bazel-bin/timetablingsolver/main" "${TARGET_DIR}/bin/TimetablingSolver"
+    chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
+    # Copy visualizer.
+    mv "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
+
+    cd "./dist"
+    zip -r "${NAME}" "${NAME}"
+}
+
+build_dist_function "example" ""
+build_dist_function "example_fr" "-fr"
