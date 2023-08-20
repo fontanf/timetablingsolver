@@ -1,5 +1,15 @@
+set VERSION="0.2"
+set TARGET_DIR="./dist/TimetablingSolver-${VERSION}-windows"
+
 chdir %~dp0
 chdir ..
+
+rmdir /s /q "%TARGET_DIR%"
+mkdir "%TARGET_DIR%"
+mkdir "%TARGET_DIR%\bin"
+mkdir "%TARGET_DIR%\data"
+mkdir "%TARGET_DIR%\log"
+mkdir "%TARGET_DIR%\out"
 :: Copy script.
 copy ".\scripts\run.bat" ".\dist\windows\run.bat"
 :: Copy data.
