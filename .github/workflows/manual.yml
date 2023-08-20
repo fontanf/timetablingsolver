@@ -80,3 +80,37 @@ jobs:
         name: TimetablingSolver-macos-fr
         path:
           dist/TimetablingSolver-macos-fr.zip
+
+
+  build_dist_windows:
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        python-version: ["3.8"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install plotly
+      run: pip3 install plotly
+    - name: Install pandas
+      run: pip3 install pandas
+    - name: Install pyinstaller
+      run: pip3 install pyinstaller
+    - name: Build dist Windows
+      run: ./scripts/build_dist_windows.sh
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: TimetablingSolver-windows
+        path:
+          dist/TimetablingSolver-windows.zip
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: TimetablingSolver-windows-fr
+        path:
+          dist/TimetablingSolver-windows-fr.zip
