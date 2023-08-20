@@ -1,7 +1,6 @@
 if not exist ".\dist" mkdir ".\dist"
 
-set VERSION="0.2"
-set TARGET_DIR="./dist/TimetablingSolver-${VERSION}-windows"
+set TARGET_DIR="./dist/TimetablingSolver-windows"
 
 chdir %~dp0
 chdir ..
@@ -22,3 +21,5 @@ copy ".\bazel-bin\timetablingsolver\main.exe" ".\dist\windows\bin\TimetablingSol
 :: Copy visualizer.
 pyinstaller -F ".\scripts\visualizer.py"
 move ".\dist\visualizer.exe" ".\dist\windows\bin\visualizer.exe"
+
+tar.exe -a -cf "%TARGET_DIR%.zip" "%TARGET_DIR%"

@@ -2,8 +2,7 @@
 
 mkdir -p "./dist"
 
-VERSION="0.2"
-TARGET_DIR="./dist/TimetablingSolver-${VERSION}-linux"
+TARGET_DIR="./dist/TimetablingSolver-linux"
 
 set -x
 cd "$(dirname "$0")"
@@ -25,3 +24,5 @@ chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
 # Copy visualizer.
 pyinstaller -F "./scripts/visualizer.py"
 mv "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
+
+zip -R "${TARGET_DIR}.zip" "${TARGET_DIR}"
