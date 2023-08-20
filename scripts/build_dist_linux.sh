@@ -22,7 +22,6 @@ build_dist_function()
     rm -rf "${TARGET_DIR}.zip"
     mkdir "${TARGET_DIR}"
     mkdir "${TARGET_DIR}/bin"
-    mkdir "${TARGET_DIR}/data"
     # Copy script.
     cp "./scripts/run.sh" "${TARGET_DIR}/run.sh"
     # Copy data.

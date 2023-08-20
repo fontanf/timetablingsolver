@@ -22,7 +22,6 @@ build_dist_function()
     rm -rf "${TARGET_DIR}.zip"
     mkdir "${TARGET_DIR}"
     mkdir "${TARGET_DIR}/bin"
-    mkdir "${TARGET_DIR}/data"
     mkdir "${TARGET_DIR}/lib"
     # Copy script.
     cp "./scripts/run.mac.sh" "${TARGET_DIR}/run.sh"
