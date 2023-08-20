@@ -35,6 +35,7 @@ build_dist_function()
 
     cd "./dist"
     zip -r "${NAME}" "${NAME}"
+    cd -
 }
 
 build_dist_function "example" ""
