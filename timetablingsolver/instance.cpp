@@ -49,7 +49,7 @@ std::string Instance::date2str(Time time) const
         return "";
     if (date_time_format_.empty())
         return std::to_string(time);
-    Time t = (time * time_step_) + date_min_;
+    std::time_t t = (time * time_step_) + date_min_;
     std::stringstream ss;
     ss.imbue(std::locale(locale_));
     ss << std::put_time(std::gmtime(&t), date_time_format_.c_str());
@@ -60,7 +60,7 @@ std::string Instance::duration2str(Time time) const
 {
     if (date_time_format_.empty())
         return std::to_string(time);
-    Time t = (time * time_step_);
+    std::time_t t = (time * time_step_);
     std::stringstream ss;
     ss.imbue(std::locale(locale_));
     ss << std::put_time(std::gmtime(&t), duration_format_.c_str());

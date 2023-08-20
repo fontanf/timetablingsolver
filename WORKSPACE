@@ -60,6 +60,7 @@ cc_library(
 http_archive(
     name = "osi_darwin",
     urls = ["https://github.com/coin-or/Osi/releases/download/releases%2F0.108.8/Osi-releases.0.108.8-x86_64-macos106-clang140.tar.gz"],
+    sha256 = "4ddc1ee5cd5088aeb7795bfebc66beec8d7a0a3baec3dd3e8bbbdff17f93cd3f",
     build_file_content = """
 cc_library(
     name = "osi",
@@ -105,6 +106,7 @@ cc_library(
 http_archive(
     name = "coinutils_darwin",
     urls = ["https://github.com/coin-or/CoinUtils/releases/download/releases%2F2.11.9/CoinUtils-releases.2.11.9-x86_64-macos106-clang140.tar.gz"],
+    sha256 = "3d0bdaf7bb748bfbec059fc8ff6ff17d2354c334710db3cd532af6a9c942f762",
     build_file_content = """
 cc_library(
     name = "coinutils",
@@ -150,6 +152,7 @@ cc_library(
 http_archive(
     name = "clp_darwin",
     urls = ["https://github.com/coin-or/Clp/releases/download/releases%2F1.17.8/Clp-releases.1.17.8-x86_64-macos106-clang140.tar.gz"],
+    sha256 = "fe9ce251cd3e0324d64f0e3956d722c73b7568685c25eb7559c327818b39b86b",
     build_file_content = """
 cc_library(
     name = "clp",
@@ -197,6 +200,7 @@ cc_library(
 
 http_archive(
     name = "cbc_darwin",
+    sha256 = "2b864f174ceabad2c6f2096180d737d36d33e7a0553211265557af187329cb94",
     urls = ["https://github.com/coin-or/Cbc/releases/download/releases%2F2.10.10/Cbc-releases.2.10.10-x86_64-macos106-clang140.tar.gz"],
     build_file_content = """
 cc_library(
