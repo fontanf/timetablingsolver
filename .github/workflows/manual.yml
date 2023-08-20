@@ -7,12 +7,39 @@ name: Manual workflow
 on:
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "greet"
+
   build_dist_linux:
-    # The type of runner that the job will run on
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: ["3.8"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install plotly
+      run: pip3 install plotly
+    - name: Install pandas
+      run: pip3 install pandas
+    - name: Install pyinstaller
+      run: pip3 install pyinstaller
+    - name: Install nauty
+      run: sudo apt-get install -y libnauty2-dev
+    - name: Build dist Linux
+      run: ./scripts/build_dist_linux.sh
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: TimetablingSolver-linux
+        path:
+          dist/TimetablingSolver-linux.zip
+
+  build_dist_macos:
+    runs-on: macos-12
     strategy:
       matrix:
         python-version: ["3.8"]
@@ -32,12 +59,12 @@ jobs:
     - name: Install pyinstaller
       run: pip3 install pyinstaller
     - name: Install nauty
-      run: sudo apt-get install -y libnauty2-dev
-    - name: Build dist Linux
-      run: ./scripts/build_dist_linux.sh
+      run: brew install nauty
+    - name: Build dist Mac OS
+      run: ./scripts/build_dist_mac_intel.sh
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: TimetablingSolver-linux
+        name: TimetablingSolver-macos
         path:
-          dist/TimetablingSolver-linux.zip
+          dist/TimetablingSolver-macos.zip
