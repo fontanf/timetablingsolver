@@ -101,7 +101,7 @@ jobs:
     - name: Install pyinstaller
       run: pip3 install pyinstaller
     - name: Build dist Windows
-      run: ./scripts/build_dist_windows.sh
+      run: ./scripts/build_dist_windows.bat
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
       with:
