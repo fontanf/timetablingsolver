@@ -29,8 +29,6 @@ jobs:
       run: pip3 install pyinstaller
     - name: Install nauty
       run: sudo apt-get install -y libnauty2-dev
-    - name: Update LIBRARY_PATH
-      run: export LIBRARY_PATH=/opt/homebrew/lib
     - name: Build dist Linux
       run: ./scripts/build_dist_linux.sh
     - name: Archive production artifacts
@@ -62,6 +60,8 @@ jobs:
       run: pip3 install pyinstaller
     - name: Install nauty
       run: brew install nauty
+    - name: Update LIBRARY_PATH
+      run: export LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib
     - name: Build dist Mac OS
       run: ./scripts/build_dist_mac_intel.sh
     - name: Archive production artifacts
