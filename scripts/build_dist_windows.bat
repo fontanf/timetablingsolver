@@ -4,6 +4,9 @@ chdir %~dp0
 chdir ..
 if not exist ".\dist" mkdir ".\dist"
 
+:: Install Python module
+python3 -m pip install  -r ".\scripts\requirements.txt"
+
 :: Build executable.
 :: Uncomment when it will be fixed.
 :: bazel build --cxxopt=/MT -- //...

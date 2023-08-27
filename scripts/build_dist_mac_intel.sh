@@ -1,9 +1,13 @@
 #!/bin/sh
 
 set -x
+
 cd "$(dirname "$0")"
 cd ..
 mkdir -p "./dist"
+
+# Install Python module
+python3 -m pip install  -r "./scripts/requirements.txt"
 
 # Build executable.
 bazel build --linkopt="-L/usr/local/lib" -- //...
@@ -26,14 +30,13 @@ build_dist_function()
     mkdir "${TARGET_DIR}/lib"
 
     # Copy script.
-    cp "./scripts/run.mac.sh" "${TARGET_DIR}/run.sh"
+    cp "./scripts/run.command" "${TARGET_DIR}/run.command"
 
     # Copy data.
     cp -r "./data/${DATA_DIR}" "${TARGET_DIR}/data"
 
     # Copy executable.
     cp "./bazel-bin/timetablingsolver/main" "${TARGET_DIR}/bin/TimetablingSolver"
-    chmod 755 "${TARGET_DIR}/bin/TimetablingSolver"
 
     # Copy lib.
     cp ./bazel-timetablingsolver/external/cbc_darwin/lib/*.dylib "${TARGET_DIR}/lib/"
@@ -43,6 +46,10 @@ build_dist_function()
 
     # Copy visualizer.
     cp "./dist/visualizer" "${TARGET_DIR}/bin/visualizer"
+
+    # Set permissions.
+    chmod -R a+rw "${TARGET_DIR}"
+    chmod +x "${TARGET_DIR}/bin/TimetablingSolver"
 
     cd "./dist"
     zip -r "${NAME}" "${NAME}"

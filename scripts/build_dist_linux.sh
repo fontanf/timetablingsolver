@@ -5,6 +5,9 @@ cd "$(dirname "$0")"
 cd ..
 mkdir -p "./dist"
 
+# Install Python module
+python3 -m pip install  -r "./scripts/requirements.txt"
+
 # Build executable.
 bazel build -- //...
 

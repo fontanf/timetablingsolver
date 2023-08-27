@@ -21,12 +21,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install plotly
-      run: pip3 install plotly
-    - name: Install pandas
-      run: pip3 install pandas
-    - name: Install pyinstaller
-      run: pip3 install pyinstaller
     - name: Install nauty
       run: sudo apt-get install -y libnauty2-dev
     - name: Build dist Linux
@@ -58,12 +52,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     # Runs a single command using the runners shell
-    - name: Install plotly
-      run: pip3 install plotly
-    - name: Install pandas
-      run: pip3 install pandas
-    - name: Install pyinstaller
-      run: pip3 install pyinstaller
     - name: Install nauty
       run: brew install nauty
     - name: Build dist Mac OS
@@ -94,12 +82,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install plotly
-      run: pip3 install plotly
-    - name: Install pandas
-      run: pip3 install pandas
-    - name: Install pyinstaller
-      run: pip3 install pyinstaller
     - name: Build
       run: bazel build --cxxopt=/MT -- //...
     - name: Build dist Windows
