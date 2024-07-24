@@ -1,0 +1,13 @@
+{
+    "Horizon": 1,
+    "NumberOfResources": 1,
+    "Events": [
+        {"Duration": 1}
+    ],
+    "EventResources": [
+        {"Event": 0, "Resource": 0}
+    ],
+    "ResourceAvailabilities": [
+        {"Resource": 0, "Start": 0, "End": 1, "Score": 1}
+    ]
+}

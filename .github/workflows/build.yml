@@ -1,0 +1,31 @@
+name: Build
+
+on: [push]
+
+jobs:
+
+  build:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+        python-version: ["3.8"]
+
+    env:
+      TIMETABLING_DATA: ${{ github.workspace }}/data/
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Build
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --config Release --parallel
+        cmake --install build --config Release --prefix install

@@ -1,0 +1,14 @@
+{
+    "Schedule": [
+        {
+            "Start": 1
+        }
+    ],
+    "Scores": [
+        {
+            "Event": 0,
+            "Resource": 1,
+            "Score": 4
+        }
+    ]
+}
