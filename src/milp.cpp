@@ -167,6 +167,12 @@ MilpOutput timetablingsolver::milp(
         // Create a Highs instance
         void* highs = Highs_create();
 
+        // Reduce printout.
+        Highs_setBoolOptionValue(
+                highs,
+                "log_to_console",
+                false);
+
         // Pass the MIP to HIGHS.
         Highs_passMip(
                 highs,
@@ -217,12 +223,6 @@ MilpOutput timetablingsolver::milp(
                     "mip_max_nodes",
                     parameters.maximum_number_of_nodes);
         }
-
-        // Reduce printout.
-        Highs_setBoolOptionValue(
-                highs,
-                "log_to_console",
-                false);
 
         // Solve the incumbent model
         HighsInt run_status = Highs_run(highs);
