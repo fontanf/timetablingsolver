@@ -62,6 +62,21 @@ test("server: polls", options, async () => {
     assert.strictEqual((await request("GET", `/api/polls/${pollId}`)).status, 404);
 });
 
+test("server: polls created with the id of the browser", options, async () => {
+    const request = api({DB: new FakeD1()});
+    const POLL = "poll-id-0123456789abcdefgh";
+    const path = `/api/polls/${POLL}`;
+    assert.strictEqual((await request("PUT", path, {body: {definition: "d"}})).status, 401);
+    assert.strictEqual((await request("PUT", path, {token: ADMIN, body: {closed: false}})).status, 400);
+    assert.deepStrictEqual(await request("PUT", path, {token: ADMIN, body: {definition: "d1"}}),
+        {status: 201, body: {definition: "d1", closed: false}});
+    assert.deepStrictEqual((await request("GET", path)).body, {definition: "d1", closed: false});
+    // Then only the teacher can modify it.
+    assert.strictEqual((await request("PUT", path, {token: OTHER, body: {definition: "d2"}})).status, 403);
+    assert.strictEqual((await request("PUT", path, {token: ADMIN, body: {definition: "d2"}})).status, 200);
+    assert.strictEqual((await request("PUT", "/api/polls/bad", {token: ADMIN, body: {definition: "d"}})).status, 404);
+});
+
 test("server: responses", options, async () => {
     const request = api({DB: new FakeD1()});
     const {pollId} = (await request("POST", "/api/polls", {body: {adminToken: ADMIN, definition: "d"}})).body;

@@ -10,8 +10,8 @@
 //             step: 15,               // in minutes
 //             // The 7 days of the week, 0: Monday, ..., 6: Sunday, with
 //             // their time ranges, in minutes since midnight, sorted and
-//             // disjoint (see 'addRange'). The days without range aren't
-//             // used.
+//             // disjoint (see 'setWeekSelection'). The days without
+//             // range aren't used.
 //             days: [{ranges: [{start: 540, end: 720}, ...]}, ...],
 //         },
 //         participants: [{
@@ -96,36 +96,49 @@ export function normalizeCalendar(calendar) {
     return result;
 }
 
-// Add the range [start, end) to some days; it is merged with the ranges it
-// touches. Returns null, or the error which prevents it: '{key, parameters}'
-// (see 'i18n.js'), and then no range is added.
-export function addRange(calendar, days, start, end) {
-    if (!(start < end))
-        return {key: "calendar.invalidRange", parameters: {}};
-    for (const day of days) {
-        const overlapping = calendar.days[day].ranges.find((r) => r.start < end && start < r.end);
-        if (overlapping !== undefined) {
-            return {key: "calendar.overlappingRange", parameters: {
-                day: dayName(day), range: formatRange(overlapping)}};
-        }
-    }
-    for (const day of days) {
-        const ranges = [...calendar.days[day].ranges, {start, end}].sort((a, b) => a.start - b.start);
-        const merged = [];
-        for (const range of ranges) {
-            const last = merged.at(-1);
-            if (last !== undefined && range.start <= last.end)
-                last.end = Math.max(last.end, range.end);
-            else
-                merged.push({...range});
-        }
-        calendar.days[day].ranges = merged;
-    }
-    return null;
+// The hours shown to paint the week (see 'weekSelection'): from 07:00 to
+// 21:00, and the time ranges outside, aligned on the step.
+export function weekGridHours(calendar) {
+    const ranges = calendar.days.flatMap((d) => d.ranges);
+    const step = calendar.step;
+    const start = Math.min(7 * 60, ...ranges.map((r) => r.start));
+    const end = Math.max(21 * 60, ...ranges.map((r) => r.end));
+    return {start: Math.floor(start / step) * step, end: Math.min(24 * 60, Math.ceil(end / step) * step)};
 }
 
-export function removeRange(calendar, day, range) {
-    calendar.days[day].ranges = calendar.days[day].ranges.filter((r) => r !== range);
+// The time ranges of the week as painted slots: '"<day>:<minute>"' -> 0 for
+// the slots of the grid (see 'weekGridHours') in a time range.
+export function weekSelection(calendar) {
+    const {start, end} = weekGridHours(calendar);
+    const selection = {};
+    calendar.days.forEach((d, day) => {
+        for (let minute = start; minute + calendar.step <= end; minute += calendar.step)
+            if (d.ranges.some((r) => r.start <= minute && minute + calendar.step <= r.end))
+                selection[slotKey(day, minute)] = SCORE_PREFERRED;
+    });
+    return selection;
+}
+
+// The time ranges of the days 'days' from painted slots (see
+// 'weekSelection'): the consecutive slots of a day form a time range.
+export function setWeekSelection(calendar, selection, days = [0, 1, 2, 3, 4, 5, 6]) {
+    const minutes = calendar.days.map(() => []);
+    for (const key of Object.keys(selection)) {
+        const {day, minute} = parseSlotKey(key);
+        minutes[day].push(minute);
+    }
+    calendar.days.forEach((d, day) => {
+        if (!days.includes(day))
+            return;
+        d.ranges = [];
+        for (const minute of minutes[day].sort((a, b) => a - b)) {
+            const last = d.ranges.at(-1);
+            if (last !== undefined && last.end === minute)
+                last.end = minute + calendar.step;
+            else
+                d.ranges.push({start: minute, end: minute + calendar.step});
+        }
+    });
 }
 
 export function defaultParameters() {

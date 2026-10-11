@@ -371,35 +371,9 @@ table.compact {
     width: auto;
 }
 
-.ranges {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem 0.75rem;
-}
 
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.1rem 0.15rem 0.1rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--surface);
-    font-variant-numeric: tabular-nums;
-}
 
-.chip button {
-    padding: 0 0.45rem;
-    border: none;
-    border-radius: 999px;
-    background: none;
-    line-height: 1.4;
-}
 
-.chip button:hover {
-    background: var(--border);
-}
 
 .error-text {
     color: var(--error);
@@ -489,7 +463,7 @@ td.missing {
 /* Small screens: the week fits in the width. */
 @media (max-width: 40rem) {
     .availability {
-        --slot-width: 2.6rem;
+        --slot-width: 2.4rem;
     }
 
     .availability .day-header {
@@ -647,7 +621,3 @@ td.missing {
     }
 }
 
-#calendar-table th {
-    color: var(--text);
-    padding-right: 1.5rem;
-}

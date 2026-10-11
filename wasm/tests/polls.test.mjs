@@ -164,9 +164,15 @@ test("polls: from the creation to the import of the responses", {
     teacher.availability = {"0:540": 0};
 
     // The teacher creates the poll.
-    await polls.createPoll(api, project, "Hello!");
+    // The poll and the links exist before it is online.
+    polls.newPoll(project, "Hello!");
     const {poll} = project;
-    assert.ok(!polls.isPollOutdated(project));
+    assert.ok(polls.needsPublish(project));
+    await assert.rejects(polls.openPoll(api, poll.id, poll.key), (error) => error.code === "not-found");
+    assert.ok(await polls.publishPoll(api, project));
+    assert.ok(!polls.needsPublish(project));
+    assert.ok(poll.created > 0);
+    assert.strictEqual(await polls.publishPoll(api, project), false);
 
     // A student opens the link.
     const opened = await polls.openPoll(api, poll.id, poll.key);
@@ -210,9 +216,9 @@ test("polls: from the creation to the import of the responses", {
 
     // The teacher changes the week: the poll is outdated until it is updated.
     project.calendar.step = 30;
-    assert.ok(polls.isPollOutdated(project));
-    await polls.updatePoll(api, project);
-    assert.ok(!polls.isPollOutdated(project));
+    assert.ok(polls.needsPublish(project));
+    await polls.publishPoll(api, project);
+    assert.ok(!polls.needsPublish(project));
     assert.strictEqual((await polls.openPoll(api, poll.id, poll.key)).definition.calendar.step, 30);
 
     // Closed: the students can't answer anymore.
@@ -230,6 +236,30 @@ test("polls: from the creation to the import of the responses", {
     assert.strictEqual(lea.pollUpdated, undefined);
     await assert.rejects(polls.openPoll(api, pollId, poll.key),
         (error) => error.code === "not-found" && client.errorKey(error) === "poll.error.notFound");
+});
+
+test("polls: a poll closed before it is online, and reset", {
+    skip: hasSqlite? false: "node:sqlite isn't available",
+}, async () => {
+    const api = localApi();
+    const project = model.newProject("Piano");
+    const alice = model.addStudent(project, "Alice");
+    polls.newPoll(project);
+    const link = polls.participantLink("https://example.org/", project, alice);
+    await polls.setPollClosed(api, project, true);
+    await polls.publishPoll(api, project);
+    assert.strictEqual((await polls.openPoll(api, project.poll.id, project.poll.key)).closed, true);
+
+    // Reset: new links, the previous ones don't work anymore.
+    alice.availability = {"0:600": 0};
+    const previous = project.poll.id;
+    await polls.resetPoll(api, project);
+    assert.notStrictEqual(project.poll.id, previous);
+    assert.notStrictEqual(polls.participantLink("https://example.org/", project, alice), link);
+    assert.deepStrictEqual(alice.availability, {"0:600": 0});
+    await polls.publishPoll(api, project);
+    await assert.rejects(polls.openPoll(api, previous, polls.parsePollLink(new URL(link).hash).key),
+        (error) => error.code === "not-found");
 });
 
 test("polls: errors of the network and of the host", async () => {

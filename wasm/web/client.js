@@ -118,10 +118,6 @@ export class Api {
         return json;
     }
 
-    async createPoll(adminToken, definition) {
-        return (await this.request("POST", "/polls", {body: {adminToken, definition}})).pollId;
-    }
-
     readPoll(pollId) {
         return this.request("GET", "/polls/" + pollId);
     }

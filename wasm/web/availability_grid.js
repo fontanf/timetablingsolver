@@ -14,13 +14,21 @@ export function brush(name = "brush") {
     return value === "none"? null: Number(value);
 }
 
+// The keys of the names of the states of the cells (see 'i18n.js').
+const AVAILABILITY_LABELS = {
+    [model.SCORE_PREFERRED]: "availability.preferred",
+    [model.SCORE_POSSIBLE]: "availability.possible",
+    none: "availability.unavailable",
+};
+
 function renderCell(cell, availability) {
     const score = availability[cell.dataset.key];
     cell.classList.remove("preferred", "possible");
     if (score !== undefined)
         cell.classList.add(SCORE_CLASSES[score] || "possible");
-    let state = t(score === undefined? "availability.unavailable":
-        score === model.SCORE_PREFERRED? "availability.preferred": "availability.possible");
+    // The labels of the grid (see 'renderGrid').
+    const labels = cell.parentElement.labels || AVAILABILITY_LABELS;
+    let state = t(labels[score === undefined? "none": score]);
     if (cell.classList.contains("teacher-off"))
         state += ", " + t("availability.teacherOff");
     cell.setAttribute("aria-label", t("availability.cellLabel", {
@@ -90,8 +98,12 @@ export function attachPainting(container, {availability, brush, onChange}) {
 // Render the grid of 'availability' in 'container'.
 // - 'teacherAvailability': if not null, the slots where the teacher isn't
 //   available are hatched;
-// - 'disabled': the cells can't be painted.
-export function renderGrid(container, {calendar, availability, teacherAvailability = null, disabled = false}) {
+// - 'disabled': the cells can't be painted;
+// - 'labels': the keys of the names of the states of the cells, for the
+//   screen readers: '{0: key, 1: key, none: key}'.
+export function renderGrid(container, {
+    calendar, availability, teacherAvailability = null, disabled = false, labels = AVAILABILITY_LABELS,
+}) {
     const days = model.usedDays(calendar);
     // The rows: from the start of the first time range of the week to the end
     // of the last one, and the start times of the slots of all the days. A
@@ -106,6 +118,7 @@ export function renderGrid(container, {calendar, availability, teacherAvailabili
 
     const table = document.createElement("div");
     table.className = "availability";
+    table.labels = labels;
     table.style.gridTemplateColumns = `auto repeat(${days.length}, minmax(var(--slot-width), 1fr))`;
     table.append(document.createElement("div"));
     for (const day of days) {
@@ -146,8 +159,9 @@ export function renderGrid(container, {calendar, availability, teacherAvailabili
             cell.dataset.time = model.formatTime(minute);
             if (teacherAvailability !== null && teacherAvailability[key] === undefined)
                 cell.classList.add("teacher-off");
-            renderCell(cell, availability);
+            // In the table first: for its labels.
             table.append(cell);
+            renderCell(cell, availability);
         }
     }
     container.replaceChildren(table);

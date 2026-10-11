@@ -59,9 +59,14 @@ function save() {
 
 function persist() {
     // The new projects get their link (sent at the next sync).
-    for (const target of projects)
-        if (!target.example && target.sync === null)
+    for (const target of projects) {
+        if (target.example)
+            continue;
+        if (target.sync === null)
             sync.enableSync(target);
+        if (target.poll === null)
+            polls.newPoll(target);
+    }
     try {
         store.save(projects);
     } catch (error) {
@@ -122,7 +127,7 @@ function initProjectBar() {
         delete copy.example;
         // A link of its own (see 'syncAll').
         copy.sync = null;
-        // The poll stays with the original project.
+        // The poll stays with the original project: a new one (see 'persist').
         copy.poll = null;
         for (const participant of copy.participants) {
             delete participant.pollLink;
@@ -218,80 +223,53 @@ function changed(...sections) {
 // Calendar
 /////////////////////////////////////////////////////////////////////////////
 
-// The choices of the days of a new range: a day, or several.
-function rangeDayChoices() {
-    return [
-        ...[0, 1, 2, 3, 4, 5, 6].map((day) => ({value: String(day), label: i18n.dayName(day), days: [day]})),
-        {value: "weekdays", label: t("calendar.weekdays"), days: [0, 1, 2, 3, 4]},
-        {value: "every-day", label: t("calendar.everyDay"), days: [0, 1, 2, 3, 4, 5, 6]},
-    ];
-}
+// The time ranges of the week, painted on a grid of all the days (see
+// 'weekSelection' in 'model.js'), and as they were when the grid was rendered.
+let weekSelection = {};
+let renderedWeekSelection = {};
+
+// The names of the states of the cells of the week.
+const WEEK_LABELS = {
+    [model.SCORE_PREFERRED]: "calendar.open",
+    [model.SCORE_POSSIBLE]: "calendar.open",
+    none: "calendar.closed",
+};
 
 function initCalendar() {
     $("calendar-step").addEventListener("change", (event) => {
         project.calendar.step = Number(event.target.value);
-        changed(renderAvailabilityGrid, renderParticipants);
-    });
-    $("add-range").addEventListener("submit", (event) => {
-        event.preventDefault();
-        const choice = rangeDayChoices().find((c) => c.value === $("add-range-day").value);
-        const start = model.parseTime($("add-range-start").value);
-        const end = model.parseTime($("add-range-end").value);
-        const error = (choice === undefined || Number.isNaN(start) || Number.isNaN(end))?
-            {key: "calendar.invalidRange", parameters: {}}:
-            model.addRange(project.calendar, choice.days, start, end);
-        $("add-range-error").hidden = error === null;
-        if (error !== null) {
-            $("add-range-error").textContent = t(error.key, error.parameters);
-            return;
-        }
         changed(renderCalendar, renderAvailabilityGrid, renderParticipants);
     });
-    // The error is about the previous values.
-    for (const id of ["add-range-day", "add-range-start", "add-range-end"])
-        $(id).addEventListener("input", () => $("add-range-error").hidden = true);
+    grid.attachPainting($("week-grid"), {
+        availability: () => project.example? null: weekSelection,
+        brush: () => grid.brush("week-brush"),
+        onChange: () => {
+            // Only the days painted: the time ranges of the others are kept,
+            // even if they aren't aligned on the step.
+            const painted = new Set();
+            for (const key of new Set([...Object.keys(weekSelection), ...Object.keys(renderedWeekSelection)]))
+                if ((key in weekSelection) !== (key in renderedWeekSelection))
+                    painted.add(model.parseSlotKey(key).day);
+            model.setWeekSelection(project.calendar, weekSelection, [...painted]);
+            changed(renderCalendar, renderAvailabilityGrid, renderParticipants);
+        },
+    });
 }
 
 function renderCalendar() {
     const {calendar} = project;
-    // About the previous values, or in the previous language.
-    $("add-range-error").hidden = true;
     $("calendar-step").replaceChildren(...model.STEPS.map((step) =>
         new Option(t("calendar.minutes", {minutes: step}), step, false, step === calendar.step)));
-    const daySelect = $("add-range-day");
-    const selected = daySelect.value;
-    daySelect.replaceChildren(...rangeDayChoices().map((choice) =>
-        new Option(choice.label, choice.value, false, choice.value === selected)));
-
-    // A row per day with time ranges.
-    const days = model.usedDays(calendar);
-    $("calendar-empty").hidden = days.length > 0;
-    const rows = days.map((day) => {
-        const row = document.createElement("tr");
-        const dayCell = document.createElement("th");
-        dayCell.scope = "row";
-        dayCell.textContent = i18n.dayName(day);
-        const rangesCell = document.createElement("td");
-        const ranges = document.createElement("div");
-        ranges.className = "ranges";
-        for (const range of calendar.days[day].ranges) {
-            const chip = document.createElement("span");
-            chip.className = "chip";
-            const remove = button("×", () => {
-                model.removeRange(calendar, day, range);
-                changed(renderCalendar, renderAvailabilityGrid, renderParticipants);
-            });
-            const removeLabel = t("calendar.removeRange", {range: model.formatRange(range)});
-            remove.setAttribute("aria-label", `${i18n.dayName(day)} – ${removeLabel}`);
-            remove.title = removeLabel;
-            chip.append(model.formatRange(range), remove);
-            ranges.append(chip);
-        }
-        rangesCell.append(ranges);
-        row.append(dayCell, rangesCell);
-        return row;
+    $("calendar-empty").hidden = model.usedDays(calendar).length > 0;
+    // All the days, with the same hours.
+    const hours = model.weekGridHours(calendar);
+    weekSelection = model.weekSelection(calendar);
+    renderedWeekSelection = {...weekSelection};
+    grid.renderGrid($("week-grid"), {
+        calendar: {step: calendar.step, days: calendar.days.map(() => ({ranges: [hours]}))},
+        availability: weekSelection,
+        labels: WEEK_LABELS,
     });
-    $("calendar-table").tBodies[0].replaceChildren(...rows);
     lockExample($("calendar-section"));
 }
 
@@ -330,6 +308,9 @@ async function syncAll() {
             continue;
         if (target.sync === null)
             sync.enableSync(target);
+        // Before the project: it is modified (e.g. the date of creation of the
+        // poll).
+        await publishPoll(target);
         if (!sync.isModified(target))
             continue;
         // The message about the new link stays until the next modification.
@@ -361,6 +342,7 @@ async function pullProject(target) {
         console.error(error);
         setSyncState(target, error.code === "network"? "offline": "error", error);
     }
+    await fetchAnswers(target, true);
 }
 
 async function handleSyncResult(target, result) {
@@ -465,13 +447,60 @@ const api = new client.Api();
 // 'true' during a request to the server.
 let pollBusy = false;
 
-// Run an operation on the poll of the current project.
-async function pollOperation(operation) {
+// The state of the polls online: project id -> {state, error}, where 'state'
+// is "publishing", "published", "offline" or "error" (see 'syncAll').
+const pollStates = new Map();
+
+function setPollState(target, state, error = null) {
+    pollStates.set(target.id, {state, error});
+    if (target === project)
+        renderPollStatus();
+}
+
+// Create or update the poll of a project on the server, if needed.
+async function publishPoll(target) {
+    if (!polls.needsPublish(target))
+        return;
+    setPollState(target, "publishing");
+    try {
+        await polls.publishPoll(api, target);
+        setPollState(target, "published");
+    } catch (error) {
+        console.error(error);
+        setPollState(target, error.code === "network"? "offline": "error", error);
+    }
+}
+
+// Fetch the answers to the poll of a project. 'silent': the errors aren't
+// shown (when it is done automatically).
+async function fetchAnswers(target, silent) {
+    const {poll} = target;
+    if (poll === null || poll.created === 0)
+        return;
+    try {
+        await polls.fetchResponses(api, target);
+        save();
+        if (target === project)
+            renderAll();
+    } catch (error) {
+        console.error(error);
+        if (!silent && target === project)
+            showPollError(error);
+    }
+}
+
+function showPollError(error) {
+    $("poll-error").textContent = t(client.errorKey(error));
+    $("poll-error").hidden = false;
+}
+
+// Run an operation on the poll of the current project, from a button.
+async function pollOperation(message, operation) {
     if (pollBusy)
         return;
     pollBusy = true;
     $("poll-error").hidden = true;
-    $("poll-status").textContent = t("poll.working");
+    $("poll-working").textContent = message;
     renderPoll();
     const target = project;
     try {
@@ -481,25 +510,32 @@ async function pollOperation(operation) {
             renderAll();
     } catch (error) {
         console.error(error);
-        $("poll-error").textContent = t(client.errorKey(error));
-        $("poll-error").hidden = false;
+        showPollError(error);
     } finally {
         pollBusy = false;
-        $("poll-status").textContent = "";
+        $("poll-working").textContent = "";
         renderPoll();
     }
 }
 
 function initPoll() {
-    $("poll-create-button").addEventListener("click", () =>
-        pollOperation((p) => polls.createPoll(api, p, $("poll-message").value.trim())));
-    $("poll-update").addEventListener("click", () => pollOperation((p) => polls.updatePoll(api, p)));
-    $("poll-fetch").addEventListener("click", () => pollOperation((p) => polls.fetchResponses(api, p)));
+    $("poll-message").addEventListener("input", (event) => {
+        if (project.poll === null)
+            return;
+        project.poll.message = event.target.value;
+        save();
+    });
+    $("poll-fetch").addEventListener("click", () =>
+        pollOperation(t("poll.fetching"), async (p) => {
+            // The poll may not be online yet.
+            await polls.publishPoll(api, p);
+            await polls.fetchResponses(api, p);
+        }));
     $("poll-close").addEventListener("click", () =>
-        pollOperation((p) => polls.setPollClosed(api, p, !p.poll.closed)));
-    $("poll-delete").addEventListener("click", () => {
-        if (confirm(t("poll.deleteConfirm")))
-            pollOperation((p) => polls.deletePoll(api, p));
+        pollOperation("", (p) => polls.setPollClosed(api, p, !p.poll.closed)));
+    $("poll-reset").addEventListener("click", () => {
+        if (confirm(t("poll.resetConfirm")))
+            pollOperation("", (p) => polls.resetPoll(api, p));
     });
     $("poll-copy").addEventListener("click", (event) => copyText($("poll-link").value, event.target));
     $("poll-copy-all").addEventListener("click", (event) => {
@@ -532,23 +568,49 @@ async function copyText(text, button) {
 
 function renderPoll() {
     const {poll} = project;
-    $("poll-create").hidden = poll !== null;
-    $("poll-active").hidden = poll === null;
+    // The example has no poll.
+    $("poll-links").hidden = poll === null;
+    const message = $("poll-message");
+    if (document.activeElement !== message)
+        message.value = poll === null? "": poll.message;
     if (poll !== null) {
         // The students added since the creation of the poll.
-        if (polls.ensurePersonalLinks(project))
+        if (polls.ensurePersonalLinks(project)) {
             save();
+            renderParticipants();
+        }
         renderPollStudents();
         $("poll-link").value = polls.pollLink(location.href, poll.id, poll.key);
-        $("poll-outdated").hidden = !polls.isPollOutdated(project);
         $("poll-closed-note").hidden = !poll.closed;
         $("poll-close").textContent = t(poll.closed? "poll.reopen": "poll.close");
         renderPollSummary(poll.lastImport);
     }
+    renderPollStatus();
     lockExample($("poll-section"));
-    for (const element of $("poll-section").querySelectorAll("button, textarea"))
+    for (const element of $("poll-section").querySelectorAll("#poll-links button"))
         if (pollBusy)
             element.disabled = true;
+}
+
+function renderPollStatus() {
+    const status = $("poll-status");
+    const {state, error} = pollStates.get(project.id) || {state: null, error: null};
+    status.className = "sync-status";
+    status.textContent = "";
+    if (project.poll === null)
+        return;
+    // Up to date (e.g. after a reload).
+    const current = (state === null && !polls.needsPublish(project))? "published": state;
+    if (current === null)
+        return;
+    if (current === "offline" || current === "error")
+        status.classList.add("problem");
+    status.textContent = {
+        "publishing": () => t("poll.publishing"),
+        "published": () => t("poll.published"),
+        "offline": () => t("poll.offline"),
+        "error": () => t("poll.publishError", {error: t(client.errorKey(error))}),
+    }[current]();
 }
 
 // The students, their personal links, and whether they answered.
@@ -665,6 +727,14 @@ function renderParticipants() {
         });
         edit.classList.add("keep-enabled");
         actionsCell.append(edit);
+        // Their personal link, once the poll is created (see 'renderPoll').
+        if (polls.participantLink(location.href, project, participant) !== null) {
+            // At the time of the click: with their current name.
+            const copy = button(t("poll.copyLink"), (event) =>
+                copyText(polls.participantLink(location.href, project, participant), event.target));
+            copy.setAttribute("aria-label", `${t("poll.copyLink")} – ${participant.name}`);
+            actionsCell.append(copy);
+        }
         if (participant.role !== "teacher") {
             actionsCell.append(button(t("participants.delete"), () => {
                 if (!confirm(t("participants.deleteConfirm", {name: participant.name})))

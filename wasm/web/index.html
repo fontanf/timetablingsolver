@@ -56,49 +56,33 @@
     <main>
         <section id="calendar-section">
             <h2 data-i18n="calendar.title"></h2>
-            <form id="add-range" class="row">
-                <label>
-                    <span data-i18n="calendar.day"></span>
-                    <select id="add-range-day"></select>
-                </label>
-                <label>
-                    <span data-i18n="calendar.start"></span>
-                    <input type="time" id="add-range-start" step="300" value="09:00" required>
-                </label>
-                <label>
-                    <span data-i18n="calendar.end"></span>
-                    <input type="time" id="add-range-end" step="300" value="12:00" required>
-                </label>
-                <button type="submit" data-i18n="calendar.add"></button>
-            </form>
-            <p id="add-range-error" class="error-text" role="alert" hidden></p>
-            <p id="calendar-empty" class="note" data-i18n="calendar.noRange" hidden></p>
-            <div class="table-wrapper">
-                <table id="calendar-table" class="compact">
-                    <tbody></tbody>
-                </table>
-            </div>
+            <p class="note" data-i18n="calendar.help"></p>
             <div class="row">
+                <fieldset class="brushes">
+                    <legend data-i18n="availability.brush"></legend>
+                    <label class="brush"><input type="radio" name="week-brush" value="0" checked><span class="swatch preferred"></span> <span data-i18n="calendar.open"></span></label>
+                    <label class="brush"><input type="radio" name="week-brush" value="none"><span class="swatch unavailable"></span> <span data-i18n="calendar.closed"></span></label>
+                </fieldset>
                 <label>
                     <span data-i18n="calendar.step"></span>
                     <select id="calendar-step"></select>
                 </label>
             </div>
+            <p id="calendar-empty" class="warning" data-i18n="calendar.noRange" hidden></p>
+            <div id="week-grid" class="grid-wrapper"></div>
         </section>
 
         <section id="poll-section">
             <h2 data-i18n="poll.title"></h2>
             <p class="note" data-i18n="poll.description"></p>
-            <div id="poll-create">
-                <label class="block">
-                    <span data-i18n="poll.message"></span>
-                    <textarea id="poll-message" rows="3"></textarea>
-                </label>
-                <button type="button" id="poll-create-button" class="primary" data-i18n="poll.create"></button>
-            </div>
-            <div id="poll-active" hidden>
+            <label class="block">
+                <span data-i18n="poll.message"></span>
+                <textarea id="poll-message" rows="3"></textarea>
+            </label>
+            <p id="poll-status" class="sync-status" role="status"></p>
+
+            <div id="poll-links">
                 <h3 data-i18n="poll.personalTitle"></h3>
-                <p class="note" data-i18n="poll.personalNote"></p>
                 <p id="poll-no-student" class="note" hidden data-i18n="poll.noStudent"></p>
                 <div class="table-wrapper">
                     <table id="poll-students" class="compact">
@@ -115,27 +99,26 @@
                 <div class="toolbar">
                     <button type="button" id="poll-copy-all" data-i18n="poll.copyAll"></button>
                 </div>
+
                 <h3 data-i18n="poll.sharedTitle"></h3>
                 <p class="note" data-i18n="poll.sharedNote"></p>
                 <span class="link-row">
                     <input type="text" id="poll-link" readonly data-i18n-aria-label="poll.sharedTitle">
                     <button type="button" id="poll-copy" data-i18n="poll.copy"></button>
                 </span>
-                <div id="poll-outdated" class="warning" hidden>
-                    <span data-i18n="poll.outdated"></span>
-                    <button type="button" id="poll-update" data-i18n="poll.update"></button>
-                </div>
-                <p id="poll-closed-note" class="note" hidden data-i18n="poll.closedNote"></p>
+
                 <h3 data-i18n="poll.responsesTitle"></h3>
+                <p class="note" data-i18n="poll.responsesNote"></p>
+                <p id="poll-closed-note" class="warning" hidden data-i18n="poll.closedNote"></p>
                 <div class="toolbar">
                     <button type="button" id="poll-fetch" class="primary" data-i18n="poll.fetch"></button>
                     <button type="button" id="poll-close"></button>
-                    <button type="button" id="poll-delete" data-i18n="poll.delete"></button>
+                    <button type="button" id="poll-reset" data-i18n="poll.reset"></button>
+                    <span id="poll-working" class="note" role="status"></span>
                 </div>
+                <p id="poll-error" class="error-text" role="alert" hidden></p>
                 <div id="poll-summary"></div>
             </div>
-            <p id="poll-status" class="note" role="status"></p>
-            <p id="poll-error" class="error-text" role="alert" hidden></p>
         </section>
 
         <section id="participants-section">

@@ -172,7 +172,7 @@ test("model: errors", () => {
         "There is no course to schedule.",
     ]);
     project.calendar.days[3].ranges = [{start: 600, end: 610}];
-    // Can't be added with 'addRange', but can be imported.
+    // Can't be painted, but can be imported.
     project.calendar.days[4].ranges = [{start: 600, end: 720}, {start: 540, end: 660}];
     assert.deepStrictEqual(withLanguage("en", () => model.check(project)).errors, [
         "Thursday: the time range 10:00–10:10 is shorter than the step.",
@@ -181,30 +181,28 @@ test("model: errors", () => {
     ]);
 });
 
-test("model: adding and removing time ranges", () => {
+test("model: the week painted on a grid", () => {
     const calendar = model.defaultCalendar();
+    calendar.step = 30;
     calendar.days.forEach((d) => d.ranges = []);
-    // Monday to Friday, then Wednesday morning.
-    assert.strictEqual(model.addRange(calendar, [0, 1, 2, 3, 4], 840, 1080), null);
-    assert.strictEqual(model.addRange(calendar, [2], 540, 720), null);
-    assert.deepStrictEqual(model.usedDays(calendar), [0, 1, 2, 3, 4]);
-    // Sorted by start.
-    assert.deepStrictEqual(calendar.days[2].ranges, [{start: 540, end: 720}, {start: 840, end: 1080}]);
-    // Overlapping ranges aren't allowed, and then no day gets the range.
-    const error = model.addRange(calendar, [5, 2], 700, 900);
-    assert.strictEqual(error.key, "calendar.overlappingRange");
-    assert.strictEqual(withLanguage("en", () => i18n.t(error.key, error.parameters)),
-        "Wednesday: the range overlaps 09:00–12:00.");
-    assert.deepStrictEqual(calendar.days[5].ranges, []);
-    assert.strictEqual(model.addRange(calendar, [6], 600, 600).key, "calendar.invalidRange");
-    // Touching ranges are merged.
-    assert.strictEqual(model.addRange(calendar, [2], 720, 780), null);
-    assert.deepStrictEqual(calendar.days[2].ranges.map(model.formatRange), ["09:00–13:00", "14:00–18:00"]);
-    assert.strictEqual(model.addRange(calendar, [2], 780, 840), null);
-    assert.deepStrictEqual(calendar.days[2].ranges.map(model.formatRange), ["09:00–18:00"]);
-    // Removing.
-    model.removeRange(calendar, 1, calendar.days[1].ranges[0]);
-    assert.deepStrictEqual(model.usedDays(calendar), [0, 2, 3, 4]);
+    calendar.days[2].ranges = [{start: 600, end: 675}, {start: 1260, end: 1350}];
+    // From 07:00 to 21:00, and up to 22:30 for Wednesday.
+    assert.deepStrictEqual(model.weekGridHours(calendar), {start: 420, end: 1350});
+    const selection = model.weekSelection(calendar);
+    // 10:00-11:15: 10:00 and 10:30; 11:00 isn't a whole slot.
+    assert.deepStrictEqual(Object.keys(selection).sort(), ["2:1260", "2:1290", "2:1320", "2:600", "2:630"]);
+
+    // Monday 09:00-10:30 and 14:00-15:00 painted; Wednesday unchanged.
+    for (const minute of [540, 570, 600, 840, 870])
+        selection[model.slotKey(0, minute)] = model.SCORE_PREFERRED;
+    model.setWeekSelection(calendar, selection, [0]);
+    assert.deepStrictEqual(calendar.days[0].ranges, [{start: 540, end: 630}, {start: 840, end: 900}]);
+    assert.deepStrictEqual(calendar.days[2].ranges, [{start: 600, end: 675}, {start: 1260, end: 1350}]);
+    assert.deepStrictEqual(model.usedDays(calendar), [0, 2]);
+    // Wednesday painted: its ranges are aligned on the slots.
+    delete selection["2:1320"];
+    model.setWeekSelection(calendar, selection, [2]);
+    assert.deepStrictEqual(calendar.days[2].ranges, [{start: 600, end: 660}, {start: 1260, end: 1320}]);
 });
 
 test("model: removing a participant removes them from the courses", () => {
