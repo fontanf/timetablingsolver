@@ -20,6 +20,8 @@
 //             // '"<day>:<minute>"' -> score (0: preferred, 1: possible);
 //             // the slots not listed are unavailable.
 //             availability: {"0:540": 0, ...},
+//             // About the poll (see 'polls.js'):
+//             pollLink, pollResponseIds, pollUpdated, comment,
 //         }],
 //         courses: [{
 //             id, name,
@@ -31,6 +33,7 @@
 //             timeLimit,         // in seconds
 //         },
 //         result: null | timetable (see 'toTimetable'),
+//         poll: null | poll (see 'polls.js'),
 //     }
 //
 // The time ranges of the calendar are put one after the other on the time
@@ -147,6 +150,8 @@ export function newProject(name) {
         courses: [],
         parameters: defaultParameters(),
         result: null,
+        // See 'polls.js'.
+        poll: null,
     };
 }
 

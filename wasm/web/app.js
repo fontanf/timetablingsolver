@@ -1,9 +1,11 @@
 // The web page: the projects of the teacher, their forms, the availability
 // grid, the optimization (in a Web Worker) and the timetable.
 
+import * as grid from "./availability_grid.js";
 import * as i18n from "./i18n.js";
 import {t} from "./i18n.js";
 import * as model from "./model.js";
+import * as polls from "./polls.js";
 import * as storage from "./storage.js";
 
 const $ = (id) => document.getElementById(id);
@@ -31,7 +33,7 @@ function loadProjects() {
         projects = [];
     }
     projects.unshift(model.exampleProject());
-    const currentId = readPreference("current");
+    const currentId = storage.readPreference("current");
     project = projects.find((p) => p.id === currentId) || projects[0];
 }
 
@@ -51,27 +53,11 @@ function save() {
         console.error(error);
         showStorageWarning();
     }
-    writePreference("current", project.id);
+    storage.writePreference("current", project.id);
 }
 
 function showStorageWarning() {
     $("storage-warning").hidden = false;
-}
-
-function readPreference(key) {
-    try {
-        return localStorage.getItem("timetablingsolver." + key);
-    } catch (error) {
-        return null;
-    }
-}
-
-function writePreference(key, value) {
-    try {
-        localStorage.setItem("timetablingsolver." + key, value);
-    } catch (error) {
-        // Not stored: the preferences are only conveniences.
-    }
 }
 
 function selectProject(id) {
@@ -108,6 +94,7 @@ function initProjectBar() {
         project.name = name;
         save();
         renderProjectBar();
+        renderPoll();
     });
     const duplicate = () => {
         const copy = {
@@ -117,6 +104,13 @@ function initProjectBar() {
             created: Date.now(),
         };
         delete copy.example;
+        // The poll stays with the original project.
+        copy.poll = null;
+        for (const participant of copy.participants) {
+            delete participant.pollLink;
+            delete participant.pollResponseIds;
+            delete participant.pollUpdated;
+        }
         projects.push(copy);
         selectProject(copy.id);
     };
@@ -125,6 +119,10 @@ function initProjectBar() {
     $("project-delete").addEventListener("click", () => {
         if (project.example || !confirm(t("project.deleteConfirm", {name: project.name})))
             return;
+        // The poll of the project and its responses, on the server (they
+        // expire anyway).
+        if (project.poll !== null)
+            polls.deletePoll(pollApi, project).catch((error) => console.error(error));
         projects = projects.filter((p) => p !== project);
         selectProject(projects[0].id);
     });
@@ -160,10 +158,11 @@ function renderProjectBar() {
 // The example can't be modified: the fields of the sections are disabled,
 // except those which only change what is shown ('keep-enabled').
 const EDITABLE_SECTIONS = [
-    "calendar-section", "participants-section", "availability-section", "courses-section", "solve-section"];
+    "calendar-section", "poll-section", "participants-section", "availability-section", "courses-section",
+    "solve-section"];
 
 function lockExample(root) {
-    for (const element of root.querySelectorAll("input, select, button")) {
+    for (const element of root.querySelectorAll("input, select, button, textarea")) {
         // Managed by 'renderChecks'.
         if (element.id === "solve" || element.id === "stop" || element.classList.contains("keep-enabled"))
             continue;
@@ -192,6 +191,7 @@ function changed(...sections) {
         section();
     renderChecks();
     renderResultOutdated();
+    renderPoll();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -276,6 +276,155 @@ function renderCalendar() {
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Poll
+/////////////////////////////////////////////////////////////////////////////
+
+const pollApi = new polls.PollApi();
+
+// 'true' during a request to the server.
+let pollBusy = false;
+
+// Run an operation on the poll of the current project.
+async function pollOperation(operation) {
+    if (pollBusy)
+        return;
+    pollBusy = true;
+    $("poll-error").hidden = true;
+    $("poll-status").textContent = t("poll.working");
+    renderPoll();
+    const target = project;
+    try {
+        await operation(target);
+        save();
+        if (target === project)
+            renderAll();
+    } catch (error) {
+        console.error(error);
+        $("poll-error").textContent = t(polls.errorKey(error));
+        $("poll-error").hidden = false;
+    } finally {
+        pollBusy = false;
+        $("poll-status").textContent = "";
+        renderPoll();
+    }
+}
+
+function initPoll() {
+    $("poll-create-button").addEventListener("click", () =>
+        pollOperation((p) => polls.createPoll(pollApi, p, $("poll-message").value.trim())));
+    $("poll-update").addEventListener("click", () => pollOperation((p) => polls.updatePoll(pollApi, p)));
+    $("poll-fetch").addEventListener("click", () => pollOperation((p) => polls.fetchResponses(pollApi, p)));
+    $("poll-close").addEventListener("click", () =>
+        pollOperation((p) => polls.setPollClosed(pollApi, p, !p.poll.closed)));
+    $("poll-delete").addEventListener("click", () => {
+        if (confirm(t("poll.deleteConfirm")))
+            pollOperation((p) => polls.deletePoll(pollApi, p));
+    });
+    $("poll-copy").addEventListener("click", (event) => copyText($("poll-link").value, event.target));
+    $("poll-copy-all").addEventListener("click", (event) => {
+        const lines = project.participants
+            .map((p) => [p.name, polls.participantLink(location.href, project, p)])
+            .filter(([, link]) => link !== null)
+            .map(([name, link]) => `${name}: ${link}`);
+        copyText(lines.join("\n"), event.target);
+    });
+    $("poll-link").addEventListener("focus", (event) => event.target.select());
+}
+
+// Copy 'text', and show it on 'button' for a moment.
+async function copyText(text, button) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (error) {
+        // Without the clipboard API (e.g. not in a secure context).
+        const area = document.createElement("textarea");
+        area.value = text;
+        document.body.append(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+    }
+    const label = button.textContent;
+    button.textContent = t("poll.copied");
+    setTimeout(() => button.textContent = label, 2000);
+}
+
+function renderPoll() {
+    const {poll} = project;
+    $("poll-create").hidden = poll !== null;
+    $("poll-active").hidden = poll === null;
+    if (poll !== null) {
+        // The students added since the creation of the poll.
+        if (polls.ensurePersonalLinks(project))
+            save();
+        renderPollStudents();
+        $("poll-link").value = polls.pollLink(location.href, poll.id, poll.key);
+        $("poll-outdated").hidden = !polls.isPollOutdated(project);
+        $("poll-closed-note").hidden = !poll.closed;
+        $("poll-close").textContent = t(poll.closed? "poll.reopen": "poll.close");
+        renderPollSummary(poll.lastImport);
+    }
+    lockExample($("poll-section"));
+    for (const element of $("poll-section").querySelectorAll("button, textarea"))
+        if (pollBusy)
+            element.disabled = true;
+}
+
+// The students, their personal links, and whether they answered.
+function renderPollStudents() {
+    const students = project.participants.filter((p) => p.role !== "teacher");
+    $("poll-no-student").hidden = students.length > 0;
+    $("poll-students").hidden = students.length === 0;
+    $("poll-copy-all").hidden = students.length === 0;
+    const rows = students.map((student) => {
+        const row = document.createElement("tr");
+        const name = document.createElement("td");
+        name.textContent = student.name;
+        const status = document.createElement("td");
+        status.textContent = (student.pollUpdated === undefined)? t("poll.notAnswered"):
+            t("poll.answered", {date: new Date(student.pollUpdated).toLocaleString(i18n.getLanguage())});
+        if (student.pollUpdated === undefined)
+            status.className = "note";
+        const actions = document.createElement("td");
+        actions.className = "actions";
+        const copy = button(t("poll.copyLink"), (event) =>
+            copyText(polls.participantLink(location.href, project, student), event.target));
+        copy.setAttribute("aria-label", `${t("poll.copyLink")} – ${student.name}`);
+        actions.append(copy);
+        row.append(name, status, actions);
+        return row;
+    });
+    $("poll-students").tBodies[0].replaceChildren(...rows);
+}
+
+function renderPollSummary(summary) {
+    const container = $("poll-summary");
+    if (summary === null) {
+        container.replaceChildren();
+        return;
+    }
+    const title = document.createElement("p");
+    title.textContent = t("poll.summary", {date: new Date(summary.date).toLocaleString(i18n.getLanguage())});
+    const list = document.createElement("ul");
+    const item = (text) => {
+        const element = document.createElement("li");
+        element.textContent = text;
+        list.append(element);
+    };
+    if (summary.added.length > 0)
+        item(t("poll.added", {names: summary.added.join(", ")}));
+    if (summary.updated.length > 0)
+        item(t("poll.updated", {names: summary.updated.join(", ")}));
+    if (summary.unchanged > 0)
+        item(t("poll.unchanged", {count: summary.unchanged}));
+    if (summary.invalid > 0)
+        item(t("poll.invalid", {count: summary.invalid}));
+    if (list.children.length === 0)
+        item(t("poll.noResponse"));
+    container.replaceChildren(title, list);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // Participants
 /////////////////////////////////////////////////////////////////////////////
 
@@ -310,6 +459,12 @@ function renderParticipants() {
             changed(renderAvailabilityParticipants, renderCourses, renderResult);
         });
         nameCell.append(name);
+        if (participant.comment) {
+            const comment = document.createElement("span");
+            comment.className = "participant-comment";
+            comment.textContent = t("poll.comment", {comment: participant.comment});
+            nameCell.append(comment);
+        }
 
         const roleCell = document.createElement("td");
         roleCell.textContent = t(participant.role === "teacher"? "role.teacher": "role.student");
@@ -359,12 +514,6 @@ function button(text, onClick) {
 
 let selectedParticipantId = null;
 
-// The brush: 0 (preferred), 1 (possible) or null (unavailable).
-function brush() {
-    const value = document.querySelector("input[name=brush]:checked").value;
-    return value === "none"? null: Number(value);
-}
-
 function selectedParticipant() {
     return project.participants.find((p) => p.id === selectedParticipantId)
         || project.participants[0]
@@ -383,54 +532,13 @@ function initAvailability() {
         participant.availability = {};
         changed(renderAvailabilityGrid, renderParticipants);
     });
-
-    // Painting: press on a cell, then move over the others. The cells under
-    // the pointer are found with 'elementFromPoint', since a touch pointer is
-    // captured by the element where it started.
-    const grid = $("availability-grid");
-    let painting = null;
-    const paint = (cell) => {
-        if (cell === null || cell.dataset.key === undefined || painting.done.has(cell.dataset.key))
-            return;
-        painting.done.add(cell.dataset.key);
-        const {day, minute} = model.parseSlotKey(cell.dataset.key);
-        model.setAvailability(painting.participant, day, minute, minute + 1, painting.score, 1);
-        renderCell(cell, painting.participant);
-    };
-    grid.addEventListener("pointerdown", (event) => {
-        const cell = event.target.closest(".slot");
-        const participant = selectedParticipant();
-        if (cell === null || participant === null || event.button !== 0 || project.example)
-            return;
-        event.preventDefault();
-        painting = {participant, score: brush(), done: new Set()};
-        paint(cell);
-    });
-    grid.addEventListener("pointermove", (event) => {
-        if (painting === null)
-            return;
-        const element = document.elementFromPoint(event.clientX, event.clientY);
-        paint(element && element.closest(".slot"));
-    });
-    const stop = () => {
-        if (painting === null)
-            return;
-        painting = null;
-        changed(renderParticipants);
-    };
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    // Keyboard: Enter or Space on a cell ('detail' is 0 for the clicks which
-    // don't come from a pointer).
-    grid.addEventListener("click", (event) => {
-        const cell = event.target.closest(".slot");
-        const participant = selectedParticipant();
-        if (cell === null || participant === null || event.detail !== 0 || project.example)
-            return;
-        const {day, minute} = model.parseSlotKey(cell.dataset.key);
-        model.setAvailability(participant, day, minute, minute + 1, brush(), 1);
-        renderCell(cell, participant);
-        changed(renderParticipants);
+    grid.attachPainting($("availability-grid"), {
+        availability: () => {
+            const participant = selectedParticipant();
+            return (project.example || participant === null)? null: participant.availability;
+        },
+        brush: () => grid.brush(),
+        onChange: () => changed(renderParticipants),
     });
 }
 
@@ -446,82 +554,19 @@ function renderAvailabilityParticipants() {
             p.id, false, p === participant)));
 }
 
-const SCORE_CLASSES = {[model.SCORE_PREFERRED]: "preferred", [model.SCORE_POSSIBLE]: "possible"};
-
-function renderCell(cell, participant) {
-    const score = participant.availability[cell.dataset.key];
-    cell.classList.remove("preferred", "possible");
-    if (score !== undefined)
-        cell.classList.add(SCORE_CLASSES[score] || "possible");
-    let state = t(score === undefined? "availability.unavailable":
-        score === model.SCORE_PREFERRED? "availability.preferred": "availability.possible");
-    if (cell.classList.contains("teacher-off"))
-        state += ", " + t("availability.teacherOff");
-    cell.setAttribute("aria-label", t("availability.cellLabel", {
-        day: cell.dataset.day, time: cell.dataset.time, state}));
-}
-
 function renderAvailabilityGrid() {
-    const grid = $("availability-grid");
     const participant = selectedParticipant();
     if (participant === null) {
-        grid.replaceChildren();
+        $("availability-grid").replaceChildren();
         return;
     }
-    const {calendar} = project;
-    const days = model.usedDays(calendar);
-    // The rows: from the start of the first time range of the week to the end
-    // of the last one, and the start times of the slots of all the days. A
-    // day has no cell (but an empty space) for the rows outside its ranges.
-    const daySlots = new Map(days.map((day) => [day, new Set(model.slotTimes(calendar, day))]));
-    const rowTimes = new Set(days.flatMap((day) => [...daySlots.get(day)]));
-    const hours = model.weekHours(calendar);
-    if (hours !== null)
-        for (let time = hours.start; time + calendar.step <= hours.end; time += calendar.step)
-            rowTimes.add(time);
-    const times = [...rowTimes].sort((a, b) => a - b);
+    // For the students, the slots where the teacher isn't available.
     const teacher = model.teacherOf(project);
-
-    const table = document.createElement("div");
-    table.className = "availability";
-    table.style.gridTemplateColumns = `auto repeat(${days.length}, minmax(4.5rem, 1fr))`;
-    table.append(document.createElement("div"));
-    for (const day of days) {
-        const header = document.createElement("div");
-        header.className = "day-header";
-        header.textContent = i18n.dayName(day);
-        table.append(header);
-    }
-    for (const minute of times) {
-        const label = document.createElement("div");
-        label.className = "time-label";
-        if (minute % 60 === 0 || minute === times[0])
-            label.textContent = model.formatTime(minute);
-        table.append(label);
-        for (const day of days) {
-            if (!daySlots.get(day).has(minute)) {
-                const empty = document.createElement("div");
-                empty.className = "off-hours";
-                table.append(empty);
-                continue;
-            }
-            const cell = document.createElement("button");
-            cell.type = "button";
-            cell.className = "slot";
-            if (minute % 60 === 0)
-                cell.classList.add("hour");
-            const key = model.slotKey(day, minute);
-            cell.dataset.key = key;
-            cell.dataset.day = i18n.dayName(day);
-            cell.dataset.time = model.formatTime(minute);
-            // The slots where the teacher isn't available, for the students.
-            if (teacher !== null && participant !== teacher && teacher.availability[key] === undefined)
-                cell.classList.add("teacher-off");
-            renderCell(cell, participant);
-            table.append(cell);
-        }
-    }
-    grid.replaceChildren(table);
+    grid.renderGrid($("availability-grid"), {
+        calendar: project.calendar,
+        availability: participant.availability,
+        teacherAvailability: (teacher !== null && teacher !== participant)? teacher.availability: null,
+    });
     lockExample($("availability-section"));
 }
 
@@ -880,7 +925,7 @@ function initLanguage() {
         new Option(name, code, false, code === i18n.getLanguage())));
     select.addEventListener("change", () => {
         i18n.setLanguage(select.value);
-        writePreference("language", select.value);
+        storage.writePreference("language", select.value);
         translateExample();
         renderAll();
     });
@@ -891,6 +936,7 @@ function renderAll() {
     $("language-flag").innerHTML = i18n.FLAGS[i18n.getLanguage()];
     renderProjectBar();
     renderCalendar();
+    renderPoll();
     renderParticipants();
     renderAvailability();
     renderCourses();
@@ -901,13 +947,14 @@ function renderAll() {
 }
 
 function init() {
-    i18n.setLanguage(i18n.detectLanguage(readPreference("language"), navigator.languages || [navigator.language]));
+    i18n.setLanguage(i18n.detectLanguage(storage.readPreference("language"), navigator.languages || [navigator.language]));
     initLanguage();
     if (!store.persistent)
         showStorageWarning();
     loadProjects();
     initProjectBar();
     initCalendar();
+    initPoll();
     initParticipants();
     initAvailability();
     initCourses();

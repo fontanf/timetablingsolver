@@ -72,12 +72,7 @@ export function normalizeProject(project) {
         name: typeof project.name === "string"? project.name: t("project.defaultName"),
         created: typeof project.created === "number"? project.created: Date.now(),
         calendar: normalizeCalendar(project.calendar),
-        participants: (Array.isArray(project.participants)? project.participants: []).map((p) => ({
-            id: String(p.id),
-            name: String(p.name ?? ""),
-            role: p.role === "teacher"? "teacher": "student",
-            availability: (p.availability && typeof p.availability === "object")? {...p.availability}: {},
-        })),
+        participants: (Array.isArray(project.participants)? project.participants: []).map(normalizeParticipant),
         courses: (Array.isArray(project.courses)? project.courses: []).map((c) => ({
             id: String(c.id),
             name: String(c.name ?? ""),
@@ -86,6 +81,44 @@ export function normalizeProject(project) {
         })),
         parameters: {...defaultParameters(), ...(project.parameters || {})},
         result: project.result ?? null,
+        poll: normalizePoll(project.poll),
+    };
+}
+
+function normalizeParticipant(p) {
+    const participant = {
+        id: String(p.id),
+        name: String(p.name ?? ""),
+        role: p.role === "teacher"? "teacher": "student",
+        availability: (p.availability && typeof p.availability === "object")? {...p.availability}: {},
+    };
+    // About the poll (see 'polls.js').
+    const isString = (value) => typeof value === "string";
+    if (p.pollLink && isString(p.pollLink.pollId) && isString(p.pollLink.responseId) && isString(p.pollLink.token))
+        participant.pollLink = {pollId: p.pollLink.pollId, responseId: p.pollLink.responseId, token: p.pollLink.token};
+    if (Array.isArray(p.pollResponseIds) && p.pollResponseIds.length > 0) {
+        participant.pollResponseIds = p.pollResponseIds.filter(isString);
+        participant.pollUpdated = Number(p.pollUpdated) || 0;
+    }
+    if (isString(p.comment) && p.comment !== "")
+        participant.comment = p.comment;
+    return participant;
+}
+
+// See 'polls.js'.
+function normalizePoll(poll) {
+    if (poll === null || typeof poll !== "object"
+            || typeof poll.id !== "string" || typeof poll.key !== "string" || typeof poll.adminToken !== "string")
+        return null;
+    return {
+        id: poll.id,
+        key: poll.key,
+        adminToken: poll.adminToken,
+        message: typeof poll.message === "string"? poll.message: "",
+        signature: typeof poll.signature === "string"? poll.signature: "",
+        closed: poll.closed === true,
+        created: Number(poll.created) || 0,
+        lastImport: (poll.lastImport && typeof poll.lastImport === "object")? poll.lastImport: null,
     };
 }
 
@@ -118,5 +151,23 @@ export function uniqueName(name, usedNames) {
         const candidate = `${name} (${i})`;
         if (!used.has(candidate))
             return candidate;
+    }
+}
+
+// The preferences of the page (e.g. the language), in localStorage: they are
+// only conveniences, so the errors are ignored.
+export function readPreference(key) {
+    try {
+        return localStorage.getItem("timetablingsolver." + key);
+    } catch (error) {
+        return null;
+    }
+}
+
+export function writePreference(key, value) {
+    try {
+        localStorage.setItem("timetablingsolver." + key, value);
+    } catch (error) {
+        // Not stored.
     }
 }

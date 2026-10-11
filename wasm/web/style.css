@@ -236,6 +236,72 @@ button.primary {
     background: var(--surface);
 }
 
+label.block {
+    display: flex;
+    width: 100%;
+    max-width: 48rem;
+    margin-right: 0;
+}
+
+textarea {
+    font: inherit;
+    color: inherit;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--background);
+    resize: vertical;
+}
+
+.link-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.link-row input {
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+}
+
+#poll-section h3 {
+    margin: 1.25rem 0 0.25rem;
+    font-size: 1rem;
+}
+
+#poll-summary ul {
+    margin: 0.25rem 0;
+    padding-left: 1.25rem;
+}
+
+.participant-comment {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.intro {
+    font-size: 1.1rem;
+}
+
+blockquote {
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    white-space: pre-wrap;
+}
+
+.info.sent {
+    display: block;
+}
+
+.info.sent p {
+    margin: 0.25rem 0;
+}
+
 .messages {
     margin: 0.5rem 0;
     padding-left: 1.25rem;
@@ -396,9 +462,33 @@ td.missing {
 }
 
 .availability {
+    --slot-width: 4.5rem;
     display: grid;
     min-width: max-content;
     user-select: none;
+}
+
+.availability .day-header .short {
+    display: none;
+}
+
+/* Small screens: the week fits in the width. */
+@media (max-width: 40rem) {
+    .availability {
+        --slot-width: 2.6rem;
+    }
+
+    .availability .day-header {
+        font-size: 0.85rem;
+    }
+
+    .availability .day-header .long {
+        display: none;
+    }
+
+    .availability .day-header .short {
+        display: inline;
+    }
 }
 
 .availability .day-header {
@@ -418,7 +508,7 @@ td.missing {
 
 .availability .slot {
     height: 1.25rem;
-    min-width: 4.5rem;
+    min-width: var(--slot-width);
     padding: 0;
     border: none;
     border-left: 1px solid var(--border);

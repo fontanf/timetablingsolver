@@ -77,6 +77,58 @@
             </div>
         </section>
 
+        <section id="poll-section">
+            <h2 data-i18n="poll.title"></h2>
+            <p class="note" data-i18n="poll.description"></p>
+            <div id="poll-create">
+                <label class="block">
+                    <span data-i18n="poll.message"></span>
+                    <textarea id="poll-message" rows="3"></textarea>
+                </label>
+                <button type="button" id="poll-create-button" class="primary" data-i18n="poll.create"></button>
+            </div>
+            <div id="poll-active" hidden>
+                <h3 data-i18n="poll.personalTitle"></h3>
+                <p class="note" data-i18n="poll.personalNote"></p>
+                <p id="poll-no-student" class="note" hidden data-i18n="poll.noStudent"></p>
+                <div class="table-wrapper">
+                    <table id="poll-students" class="compact">
+                        <thead>
+                            <tr>
+                                <th scope="col" data-i18n="poll.student"></th>
+                                <th scope="col" data-i18n="poll.status"></th>
+                                <th scope="col"><span class="visually-hidden" data-i18n="participants.actions"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="toolbar">
+                    <button type="button" id="poll-copy-all" data-i18n="poll.copyAll"></button>
+                </div>
+                <h3 data-i18n="poll.sharedTitle"></h3>
+                <p class="note" data-i18n="poll.sharedNote"></p>
+                <span class="link-row">
+                    <input type="text" id="poll-link" readonly data-i18n-aria-label="poll.sharedTitle">
+                    <button type="button" id="poll-copy" data-i18n="poll.copy"></button>
+                </span>
+                <div id="poll-outdated" class="warning" hidden>
+                    <span data-i18n="poll.outdated"></span>
+                    <button type="button" id="poll-update" data-i18n="poll.update"></button>
+                </div>
+                <p id="poll-closed-note" class="note" hidden data-i18n="poll.closedNote"></p>
+                <h3 data-i18n="poll.responsesTitle"></h3>
+                <div class="toolbar">
+                    <button type="button" id="poll-fetch" class="primary" data-i18n="poll.fetch"></button>
+                    <button type="button" id="poll-close"></button>
+                    <button type="button" id="poll-delete" data-i18n="poll.delete"></button>
+                </div>
+                <div id="poll-summary"></div>
+            </div>
+            <p id="poll-status" class="note" role="status"></p>
+            <p id="poll-error" class="error-text" role="alert" hidden></p>
+        </section>
+
         <section id="participants-section">
             <h2 data-i18n="participants.title"></h2>
             <div class="table-wrapper">

@@ -73,13 +73,18 @@ test("i18n: every language has the keys and placeholders of English", () => {
 
 test("i18n: the keys used by the page exist", () => {
     const english = i18n.MESSAGES[i18n.DEFAULT_LANGUAGE];
-    const html = fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8");
-    const keys = [...html.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)].map((m) => m[1]);
-    for (const file of ["app.js", "model.js", "storage.js"]) {
+    const keys = [];
+    for (const file of ["index.html", "poll.html"]) {
+        const html = fs.readFileSync(path.join(WEB_DIR, file), "utf8");
+        keys.push(...[...html.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)].map((m) => m[1]));
+    }
+    for (const file of fs.readdirSync(WEB_DIR).filter((f) => f.endsWith(".js") && f !== "i18n.js")) {
         const script = fs.readFileSync(path.join(WEB_DIR, file), "utf8");
         keys.push(...[...script.matchAll(/\bt\("([^"]+)"/g)].map((m) => m[1]));
-        // Keys chosen with a conditional: 't(cond? "a": "b")'.
-        keys.push(...[...script.matchAll(/"((?:role|availability)\.[a-zA-Z]+)"/g)].map((m) => m[1]));
+        // Keys chosen with a conditional ('t(cond? "a": "b")') or in tables.
+        keys.push(...[...script.matchAll(/"((?:role|availability|poll|student)\.[a-zA-Z.]+)"/g)]
+            .map((m) => m[1])
+            .filter((key) => !/\.(html|js)$/.test(key)));
     }
     assert.ok(keys.length > 50);
     for (const key of keys)

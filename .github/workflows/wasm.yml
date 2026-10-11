@@ -1,8 +1,9 @@
 name: WebAssembly
 
 # Builds the WebAssembly module and the web page, runs their tests, and
-# deploys the page to Cloudflare Pages on every push to main. Only the latest
-# commit of main is deployed.
+# deploys the page and the API of the polls (Pages Functions, see
+# 'wasm/server/api.js') to Cloudflare Pages on every push to main. Only the
+# latest commit of main is deployed.
 #
 # Pull requests touching the module, the page or the library only build and
 # test them.
@@ -10,7 +11,9 @@ name: WebAssembly
 # Deployment requires the repository secrets CLOUDFLARE_API_TOKEN (permission
 # "Cloudflare Pages: Edit") and CLOUDFLARE_ACCOUNT_ID, and an existing
 # Cloudflare Pages project (direct upload) named after the repository variable
-# CLOUDFLARE_PAGES_PROJECT, "timetablingsolver" by default.
+# CLOUDFLARE_PAGES_PROJECT, "timetablingsolver" by default. The API of the
+# polls requires a D1 database bound to the project as "DB" (in the settings
+# of the project on Cloudflare).
 
 on:
   push:
@@ -54,26 +57,30 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 22
+        # 'node:sqlite', for the tests of the API.
+        node-version: 24
     - name: Build the WebAssembly module
       run: |
         emcmake cmake -S . -B build_wasm -DCMAKE_BUILD_TYPE=Release -DTIMETABLINGSOLVER_BUILD_WASM=ON
         cmake --build build_wasm --target TimetablingSolver_wasm --parallel 4
     - name: Run the tests
       run: node --test wasm/tests/*.test.js wasm/tests/*.test.mjs
+    # 'pages/site': the static files; 'pages/functions': the Pages Functions,
+    # which import 'pages/server'.
     - name: Assemble the site
       run: |
-        mkdir site
-        cp -r wasm/web/. site/
-        rm site/serve.py site/package.json
-        cp build_wasm/wasm/timetablingsolver.js build_wasm/wasm/timetablingsolver.wasm site/
-        cp wasm/js/timetablingsolver_worker.js site/
-        ls -l site
+        mkdir -p pages/site
+        cp -r wasm/web/. pages/site/
+        rm pages/site/serve.py pages/site/package.json
+        cp build_wasm/wasm/timetablingsolver.js build_wasm/wasm/timetablingsolver.wasm pages/site/
+        cp wasm/js/timetablingsolver_worker.js pages/site/
+        cp -r wasm/functions wasm/server pages/
+        ls -lR pages
     - name: Upload the site
       uses: actions/upload-artifact@v4
       with:
-        name: site
-        path: site
+        name: pages
+        path: pages
         if-no-files-found: error
 
   deploy:
@@ -104,12 +111,14 @@ jobs:
       if: steps.check.outputs.latest == 'true'
       uses: actions/download-artifact@v5
       with:
-        name: site
-        path: site
+        name: pages
+        path: pages
     - name: Deploy to Cloudflare Pages
       if: steps.check.outputs.latest == 'true'
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # The functions are found in 'functions/' of the working directory.
+        workingDirectory: pages
         command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'timetablingsolver' }} --branch=main --commit-hash=${{ github.sha }}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The key of the poll is in the URL, after '#': don't send the URL to
+         other sites. -->
+    <meta name="referrer" content="no-referrer">
+    <title>Availabilities</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='2' width='14' height='13' rx='2' fill='%230969da'/%3E%3Crect x='3' y='6' width='4' height='3' fill='%23fff'/%3E%3Crect x='9' y='9' width='4' height='4' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="poll_page.js"></script>
+</head>
+<body>
+    <!-- The page of a poll, for the students (see 'polls.js'). The texts are
+         translated by 'i18n.js' (attributes 'data-i18n*'). -->
+    <header>
+        <div class="page-title">
+            <h1 data-i18n="student.title">Availabilities</h1>
+            <label class="inline language">
+                <span data-i18n="page.language">Language</span>
+                <span class="select-with-flag">
+                    <span id="language-flag" class="flag"></span>
+                    <select id="language-select"></select>
+                </span>
+            </label>
+        </div>
+    </header>
+
+    <main>
+        <p id="loading" class="note" data-i18n="student.loading"></p>
+        <p id="fatal-error" class="error-text" role="alert" hidden></p>
+
+        <form id="response-form" hidden novalidate>
+            <section>
+                <p id="intro" class="intro"></p>
+                <blockquote id="teacher-message" hidden></blockquote>
+                <p class="note" data-i18n="student.privacy"></p>
+                <p id="closed" class="warning" hidden data-i18n="student.closed"></p>
+                <label>
+                    <span data-i18n="student.name"></span>
+                    <input type="text" id="student-name" maxlength="100" autocomplete="name" required>
+                </label>
+            </section>
+
+            <section>
+                <h2 data-i18n="student.availability"></h2>
+                <div class="row">
+                    <fieldset class="brushes">
+                        <legend data-i18n="availability.brush"></legend>
+                        <label class="brush"><input type="radio" name="brush" value="0" checked><span class="swatch preferred"></span> <span data-i18n="availability.preferred"></span></label>
+                        <label class="brush"><input type="radio" name="brush" value="1"><span class="swatch possible"></span> <span data-i18n="availability.possible"></span></label>
+                        <label class="brush"><input type="radio" name="brush" value="none"><span class="swatch unavailable"></span> <span data-i18n="availability.unavailable"></span></label>
+                    </fieldset>
+                </div>
+                <p class="note" data-i18n="student.help"></p>
+                <div id="student-grid" class="grid-wrapper"></div>
+            </section>
+
+            <section>
+                <label class="block">
+                    <span data-i18n="student.comment"></span>
+                    <textarea id="student-comment" rows="3" maxlength="1000"></textarea>
+                </label>
+                <p id="send-error" class="error-text" role="alert" hidden></p>
+                <div class="toolbar">
+                    <button type="submit" id="send" class="primary" data-i18n="student.send"></button>
+                    <span id="send-status" role="status"></span>
+                </div>
+                <div id="sent" class="info sent" hidden>
+                    <p id="sent-text"></p>
+                    <div id="own-link" hidden>
+                        <p data-i18n="student.ownLink"></p>
+                        <span class="link-row">
+                            <input type="text" id="own-link-input" readonly data-i18n-aria-label="student.ownLink">
+                            <button type="button" id="own-link-copy" data-i18n="poll.copy"></button>
+                        </span>
+                    </div>
+                </div>
+            </section>
+        </form>
+    </main>
+</body>
+</html>
