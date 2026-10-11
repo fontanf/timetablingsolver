@@ -1,0 +1,61 @@
+name: WebAssembly
+
+# Builds the WebAssembly module and runs its tests.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - "wasm/**"
+      - "src/**"
+      - "include/**"
+      - "extern/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/wasm.yml"
+  workflow_dispatch:
+
+# Cancel the run of a pull request when a new commit is pushed to it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  EMSCRIPTEN_VERSION: "6.0.11"
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - name: Set up Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: ${{ env.EMSCRIPTEN_VERSION }}
+        actions-cache-folder: emsdk-cache
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Build the WebAssembly module
+      run: |
+        emcmake cmake -S . -B build_wasm -DCMAKE_BUILD_TYPE=Release -DTIMETABLINGSOLVER_BUILD_WASM=ON
+        cmake --build build_wasm --target TimetablingSolver_wasm --parallel 4
+    - name: Run the tests
+      run: node --test wasm/tests/*.test.js
+    - name: Upload the module
+      uses: actions/upload-artifact@v4
+      with:
+        name: wasm
+        path: |
+          build_wasm/wasm/timetablingsolver.js
+          build_wasm/wasm/timetablingsolver.wasm
+        if-no-files-found: error

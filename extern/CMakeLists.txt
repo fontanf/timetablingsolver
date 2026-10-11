@@ -1,15 +1,16 @@
 # Enable FetchContent.
 include(FetchContent)
 
-# Fetch boost.
-set(BOOST_INCLUDE_LIBRARIES thread filesystem system program_options dynamic_bitset)
-set(BOOST_ENABLE_CMAKE ON)
-include(FetchContent)
-FetchContent_Declare(
-    Boost
-    URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
-    EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(Boost)
+# Fetch boost (only used by the executable and the tests).
+if(TIMETABLINGSOLVER_BUILD_MAIN OR TIMETABLINGSOLVER_BUILD_TEST)
+    set(BOOST_INCLUDE_LIBRARIES thread filesystem system program_options dynamic_bitset)
+    set(BOOST_ENABLE_CMAKE ON)
+    FetchContent_Declare(
+        Boost
+        URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
+        EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(Boost)
+endif()
 
 # Fetch fontanf/optimizationtools.
 FetchContent_Declare(

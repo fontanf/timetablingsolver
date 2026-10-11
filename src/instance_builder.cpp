@@ -28,7 +28,7 @@ void InstanceBuilder::set_score(
         Time time,
         Score score)
 {
-    if (resource_id < -1 || resource_id >= instance_.number_of_resources()) {
+    if (resource_id < 0 || resource_id >= instance_.number_of_resources()) {
         throw std::invalid_argument(
                 "timetablingsolver::InstanceBuilder::set_score."
                 " Invalid resource id: " + std::to_string(resource_id)
@@ -53,12 +53,19 @@ void InstanceBuilder::set_score(
 void InstanceBuilder::set_default_score(
         Score default_score)
 {
-    default_score_ = -1;
+    default_score_ = default_score;
 }
 
 EventId InstanceBuilder::add_event(
         Time duration)
 {
+    if (duration <= 0) {
+        throw std::invalid_argument(
+                "timetablingsolver::InstanceBuilder::add_event."
+                " Invalid duration: " + std::to_string(duration)
+                + "; the duration must be positive.");
+    }
+
     EventId event_id = instance_.events_.size();
     Event event;
     event.duration = duration;
@@ -70,6 +77,21 @@ void InstanceBuilder::add_resource(
         EventId event_id,
         ResourceId resource_id)
 {
+    if (event_id < 0 || event_id >= instance_.number_of_events()) {
+        throw std::invalid_argument(
+                "timetablingsolver::InstanceBuilder::add_resource."
+                " Invalid event id: " + std::to_string(event_id)
+                + "; number of events: " + std::to_string(instance_.number_of_events())
+                + ".");
+    }
+    if (resource_id < 0 || resource_id >= instance_.number_of_resources()) {
+        throw std::invalid_argument(
+                "timetablingsolver::InstanceBuilder::add_resource."
+                " Invalid resource id: " + std::to_string(resource_id)
+                + "; number of resources: " + std::to_string(instance_.number_of_resources())
+                + ".");
+    }
+
     instance_.resources_[resource_id].event_ids.push_back(event_id);
     instance_.events_[event_id].resource_ids.push_back(resource_id);
 }
