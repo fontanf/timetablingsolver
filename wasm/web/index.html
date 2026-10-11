@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Timetables</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='2' width='14' height='13' rx='2' fill='%230969da'/%3E%3Crect x='3' y='6' width='4' height='3' fill='%23fff'/%3E%3Crect x='9' y='9' width='4' height='4' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+    <!-- The texts are translated by 'i18n.js' (attributes 'data-i18n*'). -->
+    <header>
+        <div class="page-title">
+            <h1 data-i18n="page.title">Timetables</h1>
+            <label class="inline">
+                <span data-i18n="page.language">Language</span>
+                <select id="language-select"></select>
+            </label>
+        </div>
+        <p data-i18n="page.description"></p>
+        <div id="storage-warning" class="warning" hidden data-i18n="storage.warning"></div>
+        <div class="toolbar" id="project-bar">
+            <label class="inline">
+                <span data-i18n="project.label">Project</span>
+                <select id="project-select"></select>
+            </label>
+            <button type="button" id="project-new" data-i18n="project.new"></button>
+            <button type="button" id="project-rename" data-i18n="project.rename"></button>
+            <button type="button" id="project-duplicate" data-i18n="project.duplicate"></button>
+            <button type="button" id="project-delete" data-i18n="project.delete"></button>
+            <button type="button" id="project-export" data-i18n="project.export"></button>
+            <button type="button" id="project-import" data-i18n="project.import"></button>
+            <input type="file" id="project-import-file" accept=".json,application/json" hidden>
+        </div>
+    </header>
+
+    <main>
+        <section id="calendar-section">
+            <h2 data-i18n="calendar.title"></h2>
+            <form id="add-range" class="row">
+                <label>
+                    <span data-i18n="calendar.day"></span>
+                    <select id="add-range-day"></select>
+                </label>
+                <label>
+                    <span data-i18n="calendar.start"></span>
+                    <input type="time" id="add-range-start" step="300" value="09:00" required>
+                </label>
+                <label>
+                    <span data-i18n="calendar.end"></span>
+                    <input type="time" id="add-range-end" step="300" value="12:00" required>
+                </label>
+                <button type="submit" data-i18n="calendar.add"></button>
+            </form>
+            <p id="add-range-error" class="error-text" role="alert" hidden></p>
+            <p id="calendar-empty" class="note" data-i18n="calendar.noRange" hidden></p>
+            <div class="table-wrapper">
+                <table id="calendar-table" class="compact">
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="row">
+                <label>
+                    <span data-i18n="calendar.step"></span>
+                    <select id="calendar-step"></select>
+                </label>
+            </div>
+        </section>
+
+        <section id="participants-section">
+            <h2 data-i18n="participants.title"></h2>
+            <div class="table-wrapper">
+                <table id="participants-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" data-i18n="participants.name"></th>
+                            <th scope="col" data-i18n="participants.role"></th>
+                            <th scope="col" data-i18n="participants.availableSlots"></th>
+                            <th scope="col"><span class="visually-hidden" data-i18n="participants.actions"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <form id="add-student" class="row">
+                <label>
+                    <span data-i18n="participants.newStudent"></span>
+                    <input type="text" id="add-student-name" data-i18n-placeholder="participants.newStudentPlaceholder" required>
+                </label>
+                <label>
+                    <span data-i18n="participants.individualDuration"></span>
+                    <input type="number" id="add-student-duration" min="0" step="5" value="30">
+                </label>
+                <button type="submit" data-i18n="participants.add"></button>
+            </form>
+            <p class="note" data-i18n="participants.zeroDurationNote"></p>
+        </section>
+
+        <section id="availability-section">
+            <h2 data-i18n="availability.title"></h2>
+            <div class="row">
+                <label>
+                    <span data-i18n="availability.participant"></span>
+                    <select id="availability-participant"></select>
+                </label>
+                <fieldset class="brushes">
+                    <legend data-i18n="availability.brush"></legend>
+                    <label class="brush"><input type="radio" name="brush" value="0" checked><span class="swatch preferred"></span> <span data-i18n="availability.preferred"></span></label>
+                    <label class="brush"><input type="radio" name="brush" value="1"><span class="swatch possible"></span> <span data-i18n="availability.possible"></span></label>
+                    <label class="brush"><input type="radio" name="brush" value="none"><span class="swatch unavailable"></span> <span data-i18n="availability.unavailable"></span></label>
+                </fieldset>
+                <button type="button" id="availability-clear" data-i18n="availability.clear"></button>
+            </div>
+            <p class="note" data-i18n="availability.note"></p>
+            <div id="availability-grid" class="grid-wrapper"></div>
+        </section>
+
+        <section id="courses-section">
+            <h2 data-i18n="courses.title"></h2>
+            <div class="table-wrapper">
+                <table id="courses-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" data-i18n="courses.name"></th>
+                            <th scope="col" data-i18n="courses.duration"></th>
+                            <th scope="col" data-i18n="courses.participants"></th>
+                            <th scope="col"><span class="visually-hidden" data-i18n="courses.actions"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button type="button" id="add-course" data-i18n="courses.addCollective"></button>
+        </section>
+
+        <section id="solve-section">
+            <h2 data-i18n="solve.title"></h2>
+            <div class="row">
+                <label>
+                    <span data-i18n="solve.timeLimit"></span>
+                    <input type="number" id="time-limit" min="1" step="1">
+                </label>
+                <label>
+                    <span data-i18n="solve.defaultScore"></span>
+                    <input type="number" id="default-score" min="2" step="1">
+                </label>
+            </div>
+            <p class="note" data-i18n="solve.note"></p>
+            <ul id="check-errors" class="messages error"></ul>
+            <ul id="check-warnings" class="messages warning"></ul>
+            <div class="toolbar">
+                <button type="button" id="solve" class="primary" data-i18n="solve.solve"></button>
+                <button type="button" id="stop" hidden data-i18n="solve.stop"></button>
+                <span id="solve-status" role="status"></span>
+            </div>
+        </section>
+
+        <section id="result-section" hidden>
+            <h2 data-i18n="result.title"></h2>
+            <div id="result-outdated" class="warning" hidden data-i18n="result.outdated"></div>
+            <ul id="result-messages" class="messages warning"></ul>
+            <div id="timetable" class="grid-wrapper"></div>
+            <div class="table-wrapper">
+                <table id="result-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" data-i18n="result.course"></th>
+                            <th scope="col" data-i18n="result.day"></th>
+                            <th scope="col" data-i18n="result.time"></th>
+                            <th scope="col" data-i18n="result.participants"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="toolbar">
+                <button type="button" id="export-csv" data-i18n="result.exportCsv"></button>
+                <button type="button" id="print" data-i18n="result.print"></button>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

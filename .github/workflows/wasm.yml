@@ -1,6 +1,16 @@
 name: WebAssembly
 
-# Builds the WebAssembly module and runs its tests.
+# Builds the WebAssembly module and the web page, runs their tests, and
+# deploys the page to Cloudflare Pages on every push to main. Only the latest
+# commit of main is deployed.
+#
+# Pull requests touching the module, the page or the library only build and
+# test them.
+#
+# Deployment requires the repository secrets CLOUDFLARE_API_TOKEN (permission
+# "Cloudflare Pages: Edit") and CLOUDFLARE_ACCOUNT_ID, and an existing
+# Cloudflare Pages project (direct upload) named after the repository variable
+# CLOUDFLARE_PAGES_PROJECT, "timetablingsolver" by default.
 
 on:
   push:
@@ -50,12 +60,56 @@ jobs:
         emcmake cmake -S . -B build_wasm -DCMAKE_BUILD_TYPE=Release -DTIMETABLINGSOLVER_BUILD_WASM=ON
         cmake --build build_wasm --target TimetablingSolver_wasm --parallel 4
     - name: Run the tests
-      run: node --test wasm/tests/*.test.js
-    - name: Upload the module
+      run: node --test wasm/tests/*.test.js wasm/tests/*.test.mjs
+    - name: Assemble the site
+      run: |
+        mkdir site
+        cp -r wasm/web/. site/
+        rm site/serve.py site/package.json
+        cp build_wasm/wasm/timetablingsolver.js build_wasm/wasm/timetablingsolver.wasm site/
+        cp wasm/js/timetablingsolver_worker.js site/
+        ls -l site
+    - name: Upload the site
       uses: actions/upload-artifact@v4
       with:
-        name: wasm
-        path: |
-          build_wasm/wasm/timetablingsolver.js
-          build_wasm/wasm/timetablingsolver.wasm
+        name: site
+        path: site
         if-no-files-found: error
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: cloudflare-pages
+    # One deployment at a time.
+    concurrency:
+      group: cloudflare-pages-deploy
+      cancel-in-progress: false
+    steps:
+    # main may have moved during the build: only its head is deployed.
+    - name: Check that the commit is still the head of main
+      id: check
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        head=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+        if [ "$head" = "${{ github.sha }}" ]; then
+          echo "latest=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "latest=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::${{ github.sha }} is no longer the head of main ($head): not deployed."
+        fi
+    - name: Download the site
+      if: steps.check.outputs.latest == 'true'
+      uses: actions/download-artifact@v5
+      with:
+        name: site
+        path: site
+    - name: Deploy to Cloudflare Pages
+      if: steps.check.outputs.latest == 'true'
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'timetablingsolver' }} --branch=main --commit-hash=${{ github.sha }}
