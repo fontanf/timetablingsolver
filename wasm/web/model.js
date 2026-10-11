@@ -34,6 +34,7 @@
 //         },
 //         result: null | timetable (see 'toTimetable'),
 //         poll: null | poll (see 'polls.js'),
+//         sync: null | sync (see 'sync.js'),
 //     }
 //
 // The time ranges of the calendar are put one after the other on the time
@@ -152,6 +153,8 @@ export function newProject(name) {
         result: null,
         // See 'polls.js'.
         poll: null,
+        // See 'sync.js'.
+        sync: null,
     };
 }
 

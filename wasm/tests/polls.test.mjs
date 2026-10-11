@@ -7,28 +7,29 @@ import assert from "node:assert";
 import test from "node:test";
 
 import {handleApi} from "../server/api.js";
+import * as client from "../web/client.js";
 import * as model from "../web/model.js";
 import * as polls from "../web/polls.js";
 import {FakeD1, hasSqlite} from "./fake_d1.mjs";
 
 test("polls: encryption", async () => {
-    const key = polls.generateKey();
+    const key = client.generateKey();
     assert.match(key, /^[A-Za-z0-9_-]{43}$/);
     const value = {name: "Chloé", availability: {"0:540": 0}};
-    const encrypted = await polls.encrypt(key, value);
+    const encrypted = await client.encrypt(key, value);
     assert.ok(!encrypted.includes("Chlo"));
-    assert.deepStrictEqual(await polls.decrypt(key, encrypted), value);
+    assert.deepStrictEqual(await client.decrypt(key, encrypted), value);
     // A different initialization vector each time.
-    assert.notStrictEqual(await polls.encrypt(key, value), encrypted);
+    assert.notStrictEqual(await client.encrypt(key, value), encrypted);
     // Wrong key, modified data.
-    await assert.rejects(polls.decrypt(polls.generateKey(), encrypted));
+    await assert.rejects(client.decrypt(client.generateKey(), encrypted));
     const modified = encrypted.slice(0, 20) + (encrypted[20] === "A"? "B": "A") + encrypted.slice(21);
-    await assert.rejects(polls.decrypt(key, modified));
+    await assert.rejects(client.decrypt(key, modified));
 });
 
 test("polls: links", () => {
-    const pollId = polls.randomToken();
-    const key = polls.generateKey();
+    const pollId = client.randomToken();
+    const key = client.generateKey();
     const link = polls.pollLink("https://example.org/app/index.html?x=1#y", pollId, key);
     assert.strictEqual(link, `https://example.org/app/poll.html#p=${pollId}&k=${key}`);
     assert.deepStrictEqual(polls.parsePollLink(new URL(link).hash), {pollId, key});
@@ -38,9 +39,9 @@ test("polls: links", () => {
 });
 
 test("polls: personal links", () => {
-    const pollId = polls.randomToken();
-    const key = polls.generateKey();
-    const personal = {responseId: polls.randomToken(), token: polls.randomToken()};
+    const pollId = client.randomToken();
+    const key = client.generateKey();
+    const personal = {responseId: client.randomToken(), token: client.randomToken()};
     const link = polls.personalLink("https://example.org/", pollId, key, personal, "Chloé & co");
     assert.deepStrictEqual(polls.parsePollLink(new URL(link).hash), {pollId, key, ...personal, name: "Chloé & co"});
     // Without the token: invalid.
@@ -50,7 +51,7 @@ test("polls: personal links", () => {
 test("polls: personal links of the students of a project", () => {
     const project = model.newProject("Test");
     const alice = model.addStudent(project, "Alice");
-    project.poll = {id: polls.randomToken(), key: polls.generateKey()};
+    project.poll = {id: client.randomToken(), key: client.generateKey()};
     assert.ok(polls.ensurePersonalLinks(project));
     assert.ok(!polls.ensurePersonalLinks(project));
     // Not for the teacher.
@@ -66,7 +67,7 @@ test("polls: personal links of the students of a project", () => {
     assert.ok(polls.ensurePersonalLinks(project));
     assert.notStrictEqual(polls.participantLink("https://example.org/", project, bruno), null);
     // A link of another poll isn't valid.
-    project.poll = {id: polls.randomToken(), key: polls.generateKey()};
+    project.poll = {id: client.randomToken(), key: client.generateKey()};
     assert.strictEqual(polls.participantLink("https://example.org/", project, alice), null);
 });
 
@@ -74,7 +75,7 @@ test("polls: import of the responses of personal links", () => {
     const project = model.newProject("Test");
     const alice = model.addStudent(project, "Alice");
     const bruno = model.addStudent(project, "Bruno");
-    project.poll = {id: polls.randomToken(), key: polls.generateKey()};
+    project.poll = {id: client.randomToken(), key: client.generateKey()};
     polls.ensurePersonalLinks(project);
     const response = (id, name, updated, availability) => ({id, name, updated, availability, comment: ""});
 
@@ -150,7 +151,7 @@ test("polls: import of the responses", () => {
 // The API of the server, called without network.
 function localApi() {
     const env = {DB: new FakeD1()};
-    return new polls.PollApi("https://example.org", (url, init) => handleApi(new Request(url, init), env));
+    return new client.Api("https://example.org", (url, init) => handleApi(new Request(url, init), env));
 }
 
 test("polls: from the creation to the import of the responses", {
@@ -176,7 +177,7 @@ test("polls: from the creation to the import of the responses", {
     assert.deepStrictEqual(opened.definition.calendar, project.calendar);
     assert.deepStrictEqual(opened.definition.teacherAvailability, {"0:540": 0});
     // With a wrong key, the definition can't be decrypted.
-    await assert.rejects(polls.openPoll(api, poll.id, polls.generateKey()));
+    await assert.rejects(polls.openPoll(api, poll.id, client.generateKey()));
 
     // A student of the project answers with their personal link, from two
     // devices.
@@ -219,7 +220,7 @@ test("polls: from the creation to the import of the responses", {
     assert.strictEqual((await polls.openPoll(api, poll.id, poll.key)).closed, true);
     await assert.rejects(
         polls.sendResponse(api, poll.id, poll.key, saved, {name: "Zoé", availability: {}, comment: ""}),
-        (error) => error instanceof polls.PollError && error.code === "closed");
+        (error) => error instanceof client.ApiError && error.code === "closed");
 
     // Deleted.
     const pollId = poll.id;
@@ -228,16 +229,16 @@ test("polls: from the creation to the import of the responses", {
     assert.strictEqual(lea.pollLink, undefined);
     assert.strictEqual(lea.pollUpdated, undefined);
     await assert.rejects(polls.openPoll(api, pollId, poll.key),
-        (error) => error.code === "not-found" && polls.errorKey(error) === "poll.error.notFound");
+        (error) => error.code === "not-found" && client.errorKey(error) === "poll.error.notFound");
 });
 
 test("polls: errors of the network and of the host", async () => {
-    const offline = new polls.PollApi("", async () => {
+    const offline = new client.Api("", async () => {
         throw new TypeError("Failed to fetch");
     });
     await assert.rejects(offline.readPoll("x"), (error) => error.code === "network");
     // E.g. the API isn't deployed: a page of the host.
-    const html = new polls.PollApi("", async () => new Response("<html>", {status: 405}));
+    const html = new client.Api("", async () => new Response("<html>", {status: 405}));
     await assert.rejects(html.readPoll("x"), (error) => error.code === "server");
-    assert.strictEqual(polls.errorKey(new Error("other")), "poll.error.server");
+    assert.strictEqual(client.errorKey(new Error("other")), "poll.error.server");
 });

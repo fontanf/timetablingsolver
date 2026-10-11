@@ -45,6 +45,11 @@
     box-sizing: border-box;
 }
 
+/* Even for the elements whose 'display' is set below. */
+[hidden] {
+    display: none !important;
+}
+
 body {
     margin: 0 auto;
     max-width: 88rem;
@@ -300,6 +305,15 @@ blockquote {
 
 .info.sent p {
     margin: 0.25rem 0;
+}
+
+.sync-status {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.sync-status.problem {
+    color: var(--warning);
 }
 
 .messages {

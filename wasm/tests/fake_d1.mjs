@@ -41,7 +41,7 @@ class FakeStatement {
     }
 
     async run() {
-        this.sqlite.prepare(this.sql).run(...this.values);
-        return {success: true};
+        const {changes} = this.sqlite.prepare(this.sql).run(...this.values);
+        return {success: true, meta: {changes: Number(changes)}};
     }
 }

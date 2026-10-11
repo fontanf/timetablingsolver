@@ -44,59 +44,10 @@
 //     pollUpdated,                            // the date of the last one
 //     comment,                                // its comment
 
+import {ApiError, decrypt, encrypt, generateKey, randomToken} from "./client.js";
 import * as model from "./model.js";
 
 const FORMAT_VERSION = 1;
-
-/////////////////////////////////////////////////////////////////////////////
-// Encryption
-/////////////////////////////////////////////////////////////////////////////
-
-function toBase64Url(bytes) {
-    let text = "";
-    for (const byte of bytes)
-        text += String.fromCharCode(byte);
-    return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function fromBase64Url(text) {
-    const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
-    return Uint8Array.from(binary, (c) => c.charCodeAt(0));
-}
-
-// A random id or token (128 bits).
-export function randomToken() {
-    return toBase64Url(crypto.getRandomValues(new Uint8Array(16)));
-}
-
-// A new key (256 bits), as text.
-export function generateKey() {
-    return toBase64Url(crypto.getRandomValues(new Uint8Array(32)));
-}
-
-function importKey(key) {
-    return crypto.subtle.importKey("raw", fromBase64Url(key), "AES-GCM", false, ["encrypt", "decrypt"]);
-}
-
-// 'value' as JSON, encrypted: the initialization vector followed by the
-// encrypted text, in base64url.
-export async function encrypt(key, value) {
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const plaintext = new TextEncoder().encode(JSON.stringify(value));
-    const ciphertext = new Uint8Array(await crypto.subtle.encrypt({name: "AES-GCM", iv}, await importKey(key), plaintext));
-    const data = new Uint8Array(iv.length + ciphertext.length);
-    data.set(iv);
-    data.set(ciphertext, iv.length);
-    return toBase64Url(data);
-}
-
-// Throws if the key is wrong or the data was modified.
-export async function decrypt(key, text) {
-    const data = fromBase64Url(text);
-    const plaintext = await crypto.subtle.decrypt(
-        {name: "AES-GCM", iv: data.slice(0, 12)}, await importKey(key), data.slice(12));
-    return JSON.parse(new TextDecoder().decode(plaintext));
-}
 
 /////////////////////////////////////////////////////////////////////////////
 // Links
@@ -136,98 +87,6 @@ export function parsePollLink(hash) {
         Object.assign(link, {responseId, token, name: (parameters.get("n") || "").slice(0, 100)});
     }
     return link;
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// API
-/////////////////////////////////////////////////////////////////////////////
-
-// An error of the API: 'code' is the code of the server (see
-// 'server/api.js'), or "network".
-export class PollError extends Error {
-    constructor(code) {
-        super(code);
-        this.code = code;
-    }
-}
-
-const ERROR_KEYS = {
-    "network": "poll.error.network",
-    "not-found": "poll.error.notFound",
-    "closed": "poll.error.closed",
-    "forbidden": "poll.error.forbidden",
-    "unauthorized": "poll.error.forbidden",
-    "too-large": "poll.error.tooLarge",
-    "too-many-responses": "poll.error.tooMany",
-};
-
-// The key of the message of an error (see 'i18n.js').
-export function errorKey(error) {
-    return ERROR_KEYS[error instanceof PollError? error.code: ""] || "poll.error.server";
-}
-
-// Client of the API of the polls.
-export class PollApi {
-    constructor(baseUrl = "", fetchFunction = (...args) => fetch(...args)) {
-        this.baseUrl = baseUrl;
-        this.fetch = fetchFunction;
-    }
-
-    async request(method, path, {token, body} = {}) {
-        const headers = {};
-        if (token !== undefined)
-            headers.Authorization = "Bearer " + token;
-        if (body !== undefined)
-            headers["Content-Type"] = "application/json";
-        let response;
-        try {
-            response = await this.fetch(this.baseUrl + "/api/polls" + path, {
-                method,
-                headers,
-                body: body === undefined? undefined: JSON.stringify(body),
-            });
-        } catch (error) {
-            throw new PollError("network");
-        }
-        const text = await response.text();
-        let json = null;
-        try {
-            json = text === ""? null: JSON.parse(text);
-        } catch (error) {
-            // E.g. a page of the host when the API isn't deployed.
-        }
-        if (!response.ok)
-            throw new PollError((json && json.error) || (response.status === 404? "not-found": "server"));
-        return json;
-    }
-
-    async createPoll(adminToken, definition) {
-        return (await this.request("POST", "", {body: {adminToken, definition}})).pollId;
-    }
-
-    readPoll(pollId) {
-        return this.request("GET", "/" + pollId);
-    }
-
-    updatePoll(pollId, adminToken, changes) {
-        return this.request("PUT", "/" + pollId, {token: adminToken, body: changes});
-    }
-
-    deletePoll(pollId, adminToken) {
-        return this.request("DELETE", "/" + pollId, {token: adminToken});
-    }
-
-    async readResponses(pollId, adminToken) {
-        return (await this.request("GET", `/${pollId}/responses`, {token: adminToken})).responses;
-    }
-
-    readResponse(pollId, responseId, token) {
-        return this.request("GET", `/${pollId}/responses/${responseId}`, {token});
-    }
-
-    writeResponse(pollId, responseId, token, data) {
-        return this.request("PUT", `/${pollId}/responses/${responseId}`, {token, body: {data}});
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -327,7 +186,7 @@ export async function deletePoll(api, project) {
         await api.deletePoll(poll.id, poll.adminToken);
     } catch (error) {
         // Already deleted (or expired).
-        if (!(error instanceof PollError && error.code === "not-found"))
+        if (!(error instanceof ApiError && error.code === "not-found"))
             throw error;
     }
     project.poll = null;
@@ -447,7 +306,7 @@ export async function readOwnResponse(api, pollId, key, {responseId, token}) {
     try {
         read = await api.readResponse(pollId, responseId, token);
     } catch (error) {
-        if (error instanceof PollError && error.code === "not-found")
+        if (error instanceof ApiError && error.code === "not-found")
             return null;
         throw error;
     }

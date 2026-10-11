@@ -22,10 +22,12 @@ The module is built without thread support: it doesn't need `SharedArrayBuffer`,
   - `storage.js`: the storage of the projects in the browser (localStorage), their export and import.
   - `i18n.js`: the translations (English and French).
   - `availability_grid.js`: the grid where the availabilities are painted.
+  - `client.js`: the client of the API of the server, and the encryption of the data sent to it.
   - `polls.js`: the polls (see below).
+  - `sync.js`: the sync of the projects (see below).
   - `app.js`: the page of the teacher (`index.html`).
   - `poll_page.js`: the page of the students (`poll.html`).
-- `server/api.js`: the API of the polls, run by Cloudflare Pages Functions (`functions/`).
+- `server/api.js`: the API of the polls and of the projects, run by Cloudflare Pages Functions (`functions/`).
 - `tests/`: the tests.
 
 ## Tests
@@ -47,6 +49,10 @@ Then open http://localhost:8000/. This server doesn't run the API of the polls: 
 ```shell
 npx wrangler pages dev site --d1 DB=local-polls
 ```
+
+## Projects online
+
+Each project of the user (not the example) has an encrypted copy online and a link (`index.html#project=<id>&k=<key>`), to open it on other devices. The modifications are sent automatically; the page fetches the latest version when a project is opened or when the page is shown again. If a project was modified on two devices at the same time, the user chooses the version to keep. The copy online is encrypted with the key of the link (AES-GCM), and the token to modify it is derived from the key: anyone with the link can modify the project. The exported files don't contain the link. The projects expire two years after their last use.
 
 ## Polls
 

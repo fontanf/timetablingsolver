@@ -139,6 +139,50 @@ test("server: expired polls are removed", options, async () => {
     assert.strictEqual(db.sqlite.prepare("SELECT COUNT(*) AS n FROM responses").get().n, 0);
 });
 
+test("server: projects", options, async () => {
+    const db = new FakeD1();
+    const request = api({DB: db});
+    const PROJECT = "project-id-0123456789abcdef";
+    const path = `/api/projects/${PROJECT}`;
+
+    // Creation.
+    assert.strictEqual((await request("PUT", path, {body: {data: "v1", version: 0}})).status, 401);
+    assert.strictEqual((await request("GET", path, {token: ADMIN})).status, 404);
+    assert.strictEqual((await request("PUT", path, {token: ADMIN, body: {data: "v1", version: 3}})).status, 404);
+    assert.deepStrictEqual(await request("PUT", path, {token: ADMIN, body: {data: "v1", version: 0}}),
+        {status: 201, body: {version: 1}});
+    // Someone else can't read it, modify it, or create it again.
+    assert.strictEqual((await request("GET", path, {token: OTHER})).status, 403);
+    assert.strictEqual((await request("PUT", path, {token: OTHER, body: {data: "x", version: 0}})).status, 403);
+    assert.strictEqual((await request("PUT", path, {token: OTHER, body: {data: "x", version: 1}})).status, 403);
+
+    // Modifications.
+    assert.deepStrictEqual(await request("GET", path, {token: ADMIN}), {status: 200, body: {data: "v1", version: 1}});
+    assert.deepStrictEqual(await request("PUT", path, {token: ADMIN, body: {data: "v2", version: 1}}),
+        {status: 200, body: {version: 2}});
+    // A device which didn't see the version 2.
+    assert.deepStrictEqual(await request("PUT", path, {token: ADMIN, body: {data: "v2 bis", version: 1}}),
+        {status: 409, body: {error: "conflict", version: 2, data: "v2"}});
+    assert.strictEqual((await request("PUT", path, {token: ADMIN, body: {data: "v2", version: "2"}})).status, 400);
+    assert.strictEqual((await request("PUT", path, {token: ADMIN, body: {data: "x".repeat(LIMITS.projectLength + 1), version: 2}})).status, 413);
+
+    // Deletion: the other devices can't recreate it.
+    assert.strictEqual((await request("DELETE", path, {token: OTHER})).status, 403);
+    assert.strictEqual((await request("DELETE", path, {token: ADMIN})).status, 204);
+    assert.strictEqual((await request("GET", path, {token: ADMIN})).status, 404);
+    assert.strictEqual((await request("PUT", path, {token: ADMIN, body: {data: "v3", version: 2}})).status, 404);
+
+    // Expiration.
+    await request("PUT", path, {token: ADMIN, body: {data: "v1", version: 0}});
+    db.sqlite.prepare("UPDATE projects SET expires = ?").run(Date.now() - 1);
+    assert.strictEqual((await request("GET", path, {token: ADMIN})).status, 404);
+    // Removed when another project is created.
+    await request("PUT", `${path}2`, {token: ADMIN, body: {data: "v1", version: 0}});
+    assert.strictEqual(db.sqlite.prepare("SELECT COUNT(*) AS n FROM projects").get().n, 1);
+    assert.strictEqual((await request("POST", path, {token: ADMIN})).status, 405);
+    assert.strictEqual((await request("GET", `${path}/x`, {token: ADMIN})).status, 404);
+});
+
 test("server: errors", options, async () => {
     assert.deepStrictEqual(await api({})("GET", "/api/polls/x"), {status: 503, body: {error: "no-database"}});
     const request = api({DB: new FakeD1()});

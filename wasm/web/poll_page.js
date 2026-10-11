@@ -12,6 +12,7 @@
 // the drafts.
 
 import * as grid from "./availability_grid.js";
+import * as client from "./client.js";
 import * as i18n from "./i18n.js";
 import {t} from "./i18n.js";
 import * as polls from "./polls.js";
@@ -19,7 +20,7 @@ import * as storage from "./storage.js";
 
 const $ = (id) => document.getElementById(id);
 
-const api = new polls.PollApi();
+const api = new client.Api();
 
 // '{pollId, key}' of the link, and '{responseId, token, name}' for a
 // personal link.
@@ -88,7 +89,7 @@ async function load() {
     } catch (error) {
         console.error(error);
         // An error of the server, or a wrong key.
-        fatal(t(error instanceof polls.PollError? polls.errorKey(error): "student.invalidLink"));
+        fatal(t(error instanceof client.ApiError? client.errorKey(error): "student.invalidLink"));
         return;
     }
     $("loading").hidden = true;
@@ -170,9 +171,9 @@ async function send(event) {
         save();
     } catch (sendError) {
         console.error(sendError);
-        if (sendError instanceof polls.PollError && sendError.code === "closed")
+        if (sendError instanceof client.ApiError && sendError.code === "closed")
             poll.closed = true;
-        error(t(polls.errorKey(sendError)));
+        error(t(client.errorKey(sendError)));
     } finally {
         sending = false;
         $("send-status").textContent = "";

@@ -82,6 +82,19 @@ export function normalizeProject(project) {
         parameters: {...defaultParameters(), ...(project.parameters || {})},
         result: project.result ?? null,
         poll: normalizePoll(project.poll),
+        sync: normalizeSync(project.sync),
+    };
+}
+
+// See 'sync.js'.
+function normalizeSync(sync) {
+    if (sync === null || typeof sync !== "object" || typeof sync.id !== "string" || typeof sync.key !== "string")
+        return null;
+    return {
+        id: sync.id,
+        key: sync.key,
+        version: Number.isInteger(sync.version)? sync.version: 0,
+        signature: typeof sync.signature === "string"? sync.signature: "",
     };
 }
 
@@ -122,8 +135,11 @@ function normalizePoll(poll) {
     };
 }
 
+// Without the link of the project (see 'sync.js'): its key gives access to the
+// copy online.
 export function exportProject(project) {
-    return JSON.stringify({format: EXPORT_FORMAT, version: EXPORT_VERSION, project}, null, 2);
+    const {sync, ...exported} = project;
+    return JSON.stringify({format: EXPORT_FORMAT, version: EXPORT_VERSION, project: exported}, null, 2);
 }
 
 // The project of an exported file, with a new id so that it doesn't replace
@@ -139,7 +155,8 @@ export function importProject(text) {
         throw new Error(t("import.invalidFormat"));
     if (json.version > EXPORT_VERSION)
         throw new Error(t("import.newerVersion"));
-    return {...normalizeProject(json.project), id: newId(), created: Date.now()};
+    // A copy: without the link of the project.
+    return {...normalizeProject(json.project), id: newId(), created: Date.now(), sync: null};
 }
 
 // 'name', or 'name (2)', 'name (3)'... if it is already used.

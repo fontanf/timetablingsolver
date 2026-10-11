@@ -2,11 +2,13 @@
 // grid, the optimization (in a Web Worker) and the timetable.
 
 import * as grid from "./availability_grid.js";
+import * as client from "./client.js";
 import * as i18n from "./i18n.js";
 import {t} from "./i18n.js";
 import * as model from "./model.js";
 import * as polls from "./polls.js";
 import * as storage from "./storage.js";
+import * as sync from "./sync.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -46,7 +48,20 @@ function translateExample() {
     projects[index] = example;
 }
 
+// Store the projects in the browser, and send the modified ones online.
 function save() {
+    persist();
+    // Shown as soon as there is something to send.
+    if (!project.example && sync.isModified(project))
+        setSyncState(project, "saving");
+    scheduleSync();
+}
+
+function persist() {
+    // The new projects get their link (sent at the next sync).
+    for (const target of projects)
+        if (!target.example && target.sync === null)
+            sync.enableSync(target);
     try {
         store.save(projects);
     } catch (error) {
@@ -66,6 +81,7 @@ function selectProject(id) {
     selectedParticipantId = null;
     save();
     renderAll();
+    pullProject(project);
 }
 
 function askName(message, name) {
@@ -104,6 +120,8 @@ function initProjectBar() {
             created: Date.now(),
         };
         delete copy.example;
+        // A link of its own (see 'syncAll').
+        copy.sync = null;
         // The poll stays with the original project.
         copy.poll = null;
         for (const participant of copy.participants) {
@@ -122,7 +140,9 @@ function initProjectBar() {
         // The poll of the project and its responses, on the server (they
         // expire anyway).
         if (project.poll !== null)
-            polls.deletePoll(pollApi, project).catch((error) => console.error(error));
+            polls.deletePoll(api, project).catch((error) => console.error(error));
+        if (project.sync !== null)
+            sync.deleteOnline(api, project).catch((error) => console.error(error));
         projects = projects.filter((p) => p !== project);
         selectProject(projects[0].id);
     });
@@ -276,10 +296,171 @@ function renderCalendar() {
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Sync (see 'sync.js')
+/////////////////////////////////////////////////////////////////////////////
+
+// The state of the sync of the projects: project id -> {state, error}, where
+// 'state' is "saving", "saved", "offline", "error" or "new-link".
+const syncStates = new Map();
+
+let syncTimer = null;
+let syncing = false;
+let syncAgain = false;
+
+function setSyncState(target, state, error = null) {
+    syncStates.set(target.id, {state, error});
+    if (target === project)
+        renderSync();
+}
+
+function scheduleSync(delay = 1500) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncAll, delay);
+}
+
+// Send the modified projects; the projects without link get one.
+async function syncAll() {
+    if (syncing) {
+        syncAgain = true;
+        return;
+    }
+    syncing = true;
+    for (const target of [...projects]) {
+        if (target.example)
+            continue;
+        if (target.sync === null)
+            sync.enableSync(target);
+        if (!sync.isModified(target))
+            continue;
+        // The message about the new link stays until the next modification.
+        if ((syncStates.get(target.id) || {}).state !== "new-link")
+            setSyncState(target, "saving");
+        try {
+            await handleSyncResult(target, await sync.push(api, target));
+        } catch (error) {
+            console.error(error);
+            setSyncState(target, error.code === "network"? "offline": "error", error);
+        }
+    }
+    persist();
+    syncing = false;
+    if (syncAgain) {
+        syncAgain = false;
+        scheduleSync(0);
+    }
+}
+
+// Receive the project if it was modified on another device.
+async function pullProject(target) {
+    if (target.example || target.sync === null || syncing)
+        return;
+    try {
+        await handleSyncResult(target, await sync.pull(api, target));
+        persist();
+    } catch (error) {
+        console.error(error);
+        setSyncState(target, error.code === "network"? "offline": "error", error);
+    }
+}
+
+async function handleSyncResult(target, result) {
+    if (result.status === "conflict") {
+        const keepLocal = !confirm(t("sync.conflict", {name: target.name}));
+        sync.resolveConflict(target, result, keepLocal);
+        if (keepLocal)
+            scheduleSync(0);
+        else if (target === project)
+            renderAll();
+        setSyncState(target, "saved");
+    } else if (result.status === "deleted") {
+        // A new link, sent at the next sync.
+        sync.enableSync(target);
+        setSyncState(target, "new-link");
+        scheduleSync(0);
+    } else {
+        if (result.status === "updated" && target === project)
+            renderAll();
+        // "Saved" only if there is nothing left to send (e.g. not a new project
+        // which wasn't sent yet); the message about a new link stays.
+        const previous = syncStates.get(target.id);
+        if (!sync.isModified(target) && (previous === undefined || previous.state !== "new-link"))
+            setSyncState(target, "saved");
+    }
+}
+
+function initSync() {
+    $("project-link").addEventListener("click", () => {
+        const panel = $("project-link-panel");
+        panel.hidden = !panel.hidden;
+        $("project-link").setAttribute("aria-expanded", String(!panel.hidden));
+        renderSync();
+    });
+    $("project-link-copy").addEventListener("click", (event) => copyText($("project-link-input").value, event.target));
+    $("project-link-input").addEventListener("focus", (event) => event.target.select());
+    // Back to the page: the project may have been modified on another device.
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible")
+            pullProject(project);
+    });
+    window.addEventListener("online", () => scheduleSync(0));
+    // A link of a project opened in this page.
+    window.addEventListener("hashchange", openLinkOfPage);
+}
+
+// The project of the link of the page ('#project=...'), if any.
+async function openLinkOfPage() {
+    const link = sync.parseProjectLink(location.hash);
+    if (link === null)
+        return;
+    // Not kept in the address of the page (nor in its history).
+    history.replaceState(null, "", location.pathname + location.search);
+    const existing = projects.find((p) => p.sync !== null && p.sync !== undefined && p.sync.id === link.id);
+    if (existing !== undefined) {
+        selectProject(existing.id);
+        return;
+    }
+    try {
+        const opened = await sync.openProject(api, link);
+        // The same project, deleted online and opened again.
+        if (projects.some((p) => p.id === opened.id))
+            opened.id = model.newId();
+        projects.push(opened);
+        selectProject(opened.id);
+    } catch (error) {
+        console.error(error);
+        const reason = (error.code === "not-found")? t("sync.notFound"): t(client.errorKey(error));
+        alert(t("sync.openError", {error: reason}));
+    }
+}
+
+function renderSync() {
+    const isExample = project.example === true;
+    $("project-link").hidden = isExample;
+    $("project-link-panel").hidden = isExample || $("project-link").getAttribute("aria-expanded") !== "true";
+    if (project.sync !== null && project.sync !== undefined)
+        $("project-link-input").value = sync.projectLink(location.href, project);
+    const status = $("sync-status");
+    const {state, error} = syncStates.get(project.id) || {state: null, error: null};
+    status.className = "sync-status";
+    status.textContent = "";
+    if (isExample || state === null)
+        return;
+    if (state === "offline" || state === "error" || state === "new-link")
+        status.classList.add("problem");
+    status.textContent = {
+        "saving": () => t("sync.saving"),
+        "saved": () => "✓ " + t("sync.saved"),
+        "offline": () => t("sync.offline"),
+        "error": () => t("sync.error", {error: t(client.errorKey(error))}),
+        "new-link": () => t("sync.newLink"),
+    }[state]();
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // Poll
 /////////////////////////////////////////////////////////////////////////////
 
-const pollApi = new polls.PollApi();
+const api = new client.Api();
 
 // 'true' during a request to the server.
 let pollBusy = false;
@@ -300,7 +481,7 @@ async function pollOperation(operation) {
             renderAll();
     } catch (error) {
         console.error(error);
-        $("poll-error").textContent = t(polls.errorKey(error));
+        $("poll-error").textContent = t(client.errorKey(error));
         $("poll-error").hidden = false;
     } finally {
         pollBusy = false;
@@ -311,14 +492,14 @@ async function pollOperation(operation) {
 
 function initPoll() {
     $("poll-create-button").addEventListener("click", () =>
-        pollOperation((p) => polls.createPoll(pollApi, p, $("poll-message").value.trim())));
-    $("poll-update").addEventListener("click", () => pollOperation((p) => polls.updatePoll(pollApi, p)));
-    $("poll-fetch").addEventListener("click", () => pollOperation((p) => polls.fetchResponses(pollApi, p)));
+        pollOperation((p) => polls.createPoll(api, p, $("poll-message").value.trim())));
+    $("poll-update").addEventListener("click", () => pollOperation((p) => polls.updatePoll(api, p)));
+    $("poll-fetch").addEventListener("click", () => pollOperation((p) => polls.fetchResponses(api, p)));
     $("poll-close").addEventListener("click", () =>
-        pollOperation((p) => polls.setPollClosed(pollApi, p, !p.poll.closed)));
+        pollOperation((p) => polls.setPollClosed(api, p, !p.poll.closed)));
     $("poll-delete").addEventListener("click", () => {
         if (confirm(t("poll.deleteConfirm")))
-            pollOperation((p) => polls.deletePoll(pollApi, p));
+            pollOperation((p) => polls.deletePoll(api, p));
     });
     $("poll-copy").addEventListener("click", (event) => copyText($("poll-link").value, event.target));
     $("poll-copy-all").addEventListener("click", (event) => {
@@ -933,6 +1114,7 @@ function initLanguage() {
 
 function renderAll() {
     i18n.translateDocument();
+    renderSync();
     $("language-flag").innerHTML = i18n.FLAGS[i18n.getLanguage()];
     renderProjectBar();
     renderCalendar();
@@ -946,7 +1128,7 @@ function renderAll() {
     lockExampleSections();
 }
 
-function init() {
+async function init() {
     i18n.setLanguage(i18n.detectLanguage(storage.readPreference("language"), navigator.languages || [navigator.language]));
     initLanguage();
     if (!store.persistent)
@@ -960,8 +1142,11 @@ function init() {
     initCourses();
     initSolve();
     initResult();
+    initSync();
     save();
     renderAll();
+    await openLinkOfPage();
+    pullProject(project);
 }
 
 init();

@@ -37,6 +37,15 @@
             <button type="button" id="project-export" data-i18n="project.export"></button>
             <button type="button" id="project-import" data-i18n="project.import"></button>
             <input type="file" id="project-import-file" accept=".json,application/json" hidden>
+            <button type="button" id="project-link" aria-expanded="false" aria-controls="project-link-panel" data-i18n="sync.link"></button>
+            <span id="sync-status" class="sync-status" role="status"></span>
+        </div>
+        <div id="project-link-panel" class="info sent" hidden>
+            <p data-i18n="sync.description"></p>
+            <span class="link-row">
+                <input type="text" id="project-link-input" readonly data-i18n-aria-label="sync.link">
+                <button type="button" id="project-link-copy" data-i18n="poll.copy"></button>
+            </span>
         </div>
         <div id="example-banner" class="info" hidden>
             <span data-i18n="example.banner"></span>
