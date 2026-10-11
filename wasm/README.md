@@ -44,11 +44,13 @@ The tests need Node 20 or later (for the Web Crypto API), and the tests of the A
 python3 wasm/web/serve.py
 ```
 
-Then open http://localhost:8000/. This server doesn't run the API of the polls: to try them, assemble the site as the workflow does (`pages/site`, `pages/functions`, `pages/server`) and run, in `pages/`:
+Then open http://localhost:8000/. This server doesn't run the API (polls, projects online): to try it, assemble the site as the workflow does (`pages/site`, `pages/functions`, `pages/server`, `pages/wrangler.toml`) and run, in `pages/`:
 
 ```shell
-npx wrangler pages dev site --d1 DB=local-polls
+npx wrangler pages dev
 ```
+
+It uses a local database.
 
 ## Projects online
 
@@ -71,4 +73,4 @@ The workflow `.github/workflows/wasm.yml` builds the module and the page and run
 The deployment requires:
 - a Cloudflare Pages project created for direct upload, named `timetablingsolver`, or set the repository variable `CLOUDFLARE_PAGES_PROJECT`;
 - the repository secrets `CLOUDFLARE_API_TOKEN` (an API token with the "Cloudflare Pages: Edit" permission) and `CLOUDFLARE_ACCOUNT_ID`;
-- for the polls, a D1 database bound to the Pages project with the variable name `DB` (Settings > Bindings). The tables are created by the API.
+- the D1 database of the API, declared in `wrangler.toml` (its name and its id). The tables are created by the API.

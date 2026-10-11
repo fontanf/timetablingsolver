@@ -11,9 +11,8 @@ name: WebAssembly
 # Deployment requires the repository secrets CLOUDFLARE_API_TOKEN (permission
 # "Cloudflare Pages: Edit") and CLOUDFLARE_ACCOUNT_ID, and an existing
 # Cloudflare Pages project (direct upload) named after the repository variable
-# CLOUDFLARE_PAGES_PROJECT, "timetablingsolver" by default. The API of the
-# polls requires a D1 database bound to the project as "DB" (in the settings
-# of the project on Cloudflare).
+# CLOUDFLARE_PAGES_PROJECT, "timetablingsolver" by default. The bindings (the
+# D1 database of the API) are declared in 'wasm/wrangler.toml'.
 
 on:
   push:
@@ -66,7 +65,7 @@ jobs:
     - name: Run the tests
       run: node --test wasm/tests/*.test.js wasm/tests/*.test.mjs
     # 'pages/site': the static files; 'pages/functions': the Pages Functions,
-    # which import 'pages/server'.
+    # which import 'pages/server'; 'pages/wrangler.toml': the configuration.
     - name: Assemble the site
       run: |
         mkdir -p pages/site
@@ -74,7 +73,7 @@ jobs:
         rm pages/site/serve.py pages/site/package.json
         cp build_wasm/wasm/timetablingsolver.js build_wasm/wasm/timetablingsolver.wasm pages/site/
         cp wasm/js/timetablingsolver_worker.js pages/site/
-        cp -r wasm/functions wasm/server pages/
+        cp -r wasm/functions wasm/server wasm/wrangler.toml pages/
         ls -lR pages
     - name: Upload the site
       uses: actions/upload-artifact@v4
@@ -119,6 +118,7 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        # The functions are found in 'functions/' of the working directory.
+        # The functions ('functions/') and the configuration ('wrangler.toml')
+        # are found in the working directory.
         workingDirectory: pages
         command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'timetablingsolver' }} --branch=main --commit-hash=${{ github.sha }}

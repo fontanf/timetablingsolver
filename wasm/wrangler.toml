@@ -1,0 +1,14 @@
+# Configuration of the Cloudflare Pages project: copied next to the site
+# ('pages/site') and the functions ('pages/functions') by the workflow
+# '.github/workflows/wasm.yml', which deploys from 'pages/'. The bindings
+# declared here replace the ones of the settings of the project on Cloudflare.
+
+name = "timetablingsolver"
+pages_build_output_dir = "site"
+compatibility_date = "2025-09-01"
+
+# The database of the API (see 'server/api.js').
+[[d1_databases]]
+binding = "DB"
+database_name = "timetablingsolver"
+database_id = "1c8a8da8-558d-4be7-8e64-96b90aff5bb3"
