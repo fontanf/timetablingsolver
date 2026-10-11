@@ -2,7 +2,7 @@
 // and import from JSON files.
 
 import {t} from "./i18n.js";
-import {defaultParameters, newId, normalizeCalendar} from "./model.js";
+import {EXAMPLE_ID, defaultParameters, newId, normalizeCalendar} from "./model.js";
 
 const STORAGE_KEY = "timetablingsolver.projects";
 
@@ -22,7 +22,7 @@ export class MemoryStore {
     }
 
     save(projects) {
-        this.projects = structuredClone(projects);
+        this.projects = structuredClone(projects.filter((p) => !p.example));
     }
 }
 
@@ -37,11 +37,16 @@ export class LocalStorageStore {
         if (text === null)
             return [];
         const projects = JSON.parse(text);
-        return Array.isArray(projects)? projects.map(normalizeProject): [];
+        if (!Array.isArray(projects))
+            return [];
+        // The first versions stored the example, which could be modified: it
+        // is kept as a project of the user.
+        return projects.map(normalizeProject).map((p) => p.id === EXAMPLE_ID? {...p, id: newId()}: p);
     }
 
+    // The example isn't stored.
     save(projects) {
-        this.storage.setItem(STORAGE_KEY, JSON.stringify(projects));
+        this.storage.setItem(STORAGE_KEY, JSON.stringify(projects.filter((p) => !p.example)));
     }
 }
 

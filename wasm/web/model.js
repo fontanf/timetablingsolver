@@ -179,11 +179,15 @@ export function removeParticipant(project, participantId) {
     });
 }
 
-// An example: a teacher, four students with an individual course each, and a
-// collective course for three of them.
+export const EXAMPLE_ID = "example";
+
+// The example: a teacher, four students with an individual course each, and a
+// collective course for three of them. It isn't stored, can't be modified,
+// and is in the language of the page when it is created.
 export function exampleProject() {
     const project = newProject(t("project.example"));
-    project.id = "example";
+    project.id = EXAMPLE_ID;
+    project.example = true;
     project.created = 0;
     // On Wednesday, the morning and a longer afternoon, and there are courses
     // on Saturday morning.
@@ -212,7 +216,7 @@ export function exampleProject() {
     for (const student of collective)
         setAvailability(student, 2, 18 * 60, 19 * 60, SCORE_PREFERRED, project.calendar.step);
     project.courses.push(newCourse(
-        t("names.exampleCollectiveCourse"), 60, [teacher.id, ...collective.map((p) => p.id)]));
+        t("names.collectiveCourse"), 60, [teacher.id, ...collective.map((p) => p.id)]));
     return project;
 }
 

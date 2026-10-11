@@ -13,6 +13,25 @@ export const LANGUAGES = {en: "English", fr: "Français"};
 
 export const DEFAULT_LANGUAGE = "en";
 
+// Flags of the languages (inline SVG: the flag emoji aren't displayed on
+// Windows).
+export const FLAGS = {
+    // Cropped to 3:2, as the other flags.
+    en: '<svg viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'
+        + '<clipPath id="flag-en-t"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath>'
+        + '<path d="M0,0v30h60v-30z" fill="#012169"/>'
+        + '<path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/>'
+        + '<path d="M0,0L60,30M60,0L0,30" clip-path="url(#flag-en-t)" stroke="#c8102e" stroke-width="4"/>'
+        + '<path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/>'
+        + '<path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/>'
+        + '</svg>',
+    fr: '<svg viewBox="0 0 3 2" aria-hidden="true">'
+        + '<rect width="1" height="2" fill="#002654"/>'
+        + '<rect x="1" width="1" height="2" fill="#fff"/>'
+        + '<rect x="2" width="1" height="2" fill="#ce1126"/>'
+        + '</svg>',
+};
+
 export const MESSAGES = {
     en: {
         "page.title": "Timetables",
@@ -34,6 +53,9 @@ export const MESSAGES = {
         "project.deleteConfirm": "Delete the project “{name}”? This can't be undone.",
         "project.importError": "The project couldn't be imported: {error}",
         "project.example": "Example",
+        "project.exampleOption": "Example (read only)",
+        "example.banner": "This example can't be modified. Duplicate it to make your own project, or create a new one.",
+        "example.duplicate": "Duplicate the example",
         "project.defaultName": "Project",
 
         "import.invalidJson": "the file isn't a valid JSON file.",
@@ -72,7 +94,6 @@ export const MESSAGES = {
         "names.teacher": "Teacher",
         "names.individualCourse": "{name}'s course",
         "names.collectiveCourse": "Group course",
-        "names.exampleCollectiveCourse": "Music theory",
 
         "availability.title": "3. Availabilities",
         "availability.participant": "Participant",
@@ -161,6 +182,9 @@ export const MESSAGES = {
         "project.deleteConfirm": "Supprimer le projet « {name} » ? Cette action est définitive.",
         "project.importError": "Impossible d'importer le projet : {error}",
         "project.example": "Exemple",
+        "project.exampleOption": "Exemple (lecture seule)",
+        "example.banner": "Cet exemple ne peut pas être modifié. Dupliquez-le pour en faire votre propre projet, ou créez-en un nouveau.",
+        "example.duplicate": "Dupliquer l'exemple",
         "project.defaultName": "Projet",
 
         "import.invalidJson": "le fichier n'est pas un fichier JSON valide.",
@@ -199,7 +223,6 @@ export const MESSAGES = {
         "names.teacher": "Professeur",
         "names.individualCourse": "Cours de {name}",
         "names.collectiveCourse": "Cours collectif",
-        "names.exampleCollectiveCourse": "Formation musicale",
 
         "availability.title": "3. Disponibilités",
         "availability.participant": "Participant",

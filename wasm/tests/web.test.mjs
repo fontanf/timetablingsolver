@@ -86,6 +86,11 @@ test("i18n: the keys used by the page exist", () => {
         assert.ok(key in english, `missing key: ${key}`);
 });
 
+test("i18n: every language has a flag", () => {
+    for (const language of Object.keys(i18n.LANGUAGES))
+        assert.match(i18n.FLAGS[language], /^<svg [^>]*aria-hidden="true">.*<\/svg>$/, language);
+});
+
 test("i18n: language detection", () => {
     assert.strictEqual(i18n.detectLanguage("fr", ["en-US"]), "fr");
     assert.strictEqual(i18n.detectLanguage(null, ["de-DE", "fr-CA", "en"]), "fr");
@@ -333,19 +338,49 @@ class FakeStorage {
     }
 }
 
-test("storage: projects saved and loaded", () => {
+test("storage: projects saved and loaded, without the example", () => {
     const store = new storage.LocalStorageStore(new FakeStorage());
     assert.deepStrictEqual(store.load(), []);
-    const projects = [model.exampleProject(), model.newProject("Other")];
-    store.save(projects);
+    const projects = [model.newProject("A"), model.newProject("B")];
+    store.save([model.exampleProject(), ...projects]);
     assert.deepStrictEqual(store.load(), projects);
+});
+
+test("storage: the example stored by the first versions is kept as a project", () => {
+    const fakeStorage = new FakeStorage();
+    const old = {...model.exampleProject(), name: "Mine"};
+    delete old.example;
+    fakeStorage.setItem("timetablingsolver.projects", JSON.stringify([old]));
+    const [loaded] = new storage.LocalStorageStore(fakeStorage).load();
+    assert.notStrictEqual(loaded.id, model.EXAMPLE_ID);
+    assert.strictEqual(loaded.name, "Mine");
+    assert.strictEqual(loaded.example, undefined);
+});
+
+test("model: the example is in the language of the page", () => {
+    const names = (project) => [
+        project.name,
+        ...project.participants.map((p) => p.name),
+        ...project.courses.map((c) => c.name),
+    ];
+    const english = withLanguage("en", () => model.exampleProject());
+    const french = withLanguage("fr", () => model.exampleProject());
+    assert.ok(english.example && french.example);
+    assert.deepStrictEqual(names(english), [
+        "Example", "Teacher", "Alice", "Bruno", "Chloé", "David",
+        "Alice's course", "Bruno's course", "Chloé's course", "David's course", "Group course"]);
+    assert.deepStrictEqual(names(french), [
+        "Exemple", "Professeur", "Alice", "Bruno", "Chloé", "David",
+        "Cours de Alice", "Cours de Bruno", "Cours de Chloé", "Cours de David", "Cours collectif"]);
 });
 
 test("storage: export and import", () => {
     const project = model.exampleProject();
     const imported = storage.importProject(storage.exportProject(project));
     assert.notStrictEqual(imported.id, project.id);
-    assert.deepStrictEqual({...imported, id: project.id, created: project.created}, project);
+    // An imported example can be modified.
+    const {example, ...modifiable} = project;
+    assert.deepStrictEqual({...imported, id: project.id, created: project.created}, modifiable);
 });
 
 test("storage: invalid imports", () => {

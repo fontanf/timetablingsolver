@@ -22,6 +22,7 @@ let worker = null;
 // Projects
 /////////////////////////////////////////////////////////////////////////////
 
+// The projects: the example first, then the projects of the user.
 function loadProjects() {
     try {
         projects = store.load();
@@ -29,10 +30,18 @@ function loadProjects() {
         console.error(error);
         projects = [];
     }
-    if (projects.length === 0)
-        projects.push(model.exampleProject());
+    projects.unshift(model.exampleProject());
     const currentId = readPreference("current");
     project = projects.find((p) => p.id === currentId) || projects[0];
+}
+
+// The example in the language of the page.
+function translateExample() {
+    const example = model.exampleProject();
+    const index = projects.findIndex((p) => p.example);
+    if (project === projects[index])
+        project = example;
+    projects[index] = example;
 }
 
 function save() {
@@ -91,6 +100,8 @@ function initProjectBar() {
         selectProject(created.id);
     });
     $("project-rename").addEventListener("click", () => {
+        if (project.example)
+            return;
         const name = askName(t("project.renamePrompt"), project.name);
         if (name === null)
             return;
@@ -98,22 +109,23 @@ function initProjectBar() {
         save();
         renderProjectBar();
     });
-    $("project-duplicate").addEventListener("click", () => {
+    const duplicate = () => {
         const copy = {
             ...structuredClone(project),
             id: model.newId(),
             name: storage.uniqueName(t("project.copySuffix", {name: project.name}), projects.map((p) => p.name)),
             created: Date.now(),
         };
+        delete copy.example;
         projects.push(copy);
         selectProject(copy.id);
-    });
+    };
+    $("project-duplicate").addEventListener("click", duplicate);
+    $("example-duplicate").addEventListener("click", duplicate);
     $("project-delete").addEventListener("click", () => {
-        if (!confirm(t("project.deleteConfirm", {name: project.name})))
+        if (project.example || !confirm(t("project.deleteConfirm", {name: project.name})))
             return;
         projects = projects.filter((p) => p !== project);
-        if (projects.length === 0)
-            projects.push(model.exampleProject());
         selectProject(projects[0].id);
     });
     $("project-export").addEventListener("click", () => {
@@ -138,7 +150,30 @@ function initProjectBar() {
 
 function renderProjectBar() {
     const select = $("project-select");
-    select.replaceChildren(...projects.map((p) => new Option(p.name, p.id, false, p === project)));
+    select.replaceChildren(...projects.map((p) =>
+        new Option(p.example? t("project.exampleOption"): p.name, p.id, false, p === project)));
+    $("project-rename").disabled = project.example === true;
+    $("project-delete").disabled = project.example === true;
+    $("example-banner").hidden = project.example !== true;
+}
+
+// The example can't be modified: the fields of the sections are disabled,
+// except those which only change what is shown ('keep-enabled').
+const EDITABLE_SECTIONS = [
+    "calendar-section", "participants-section", "availability-section", "courses-section", "solve-section"];
+
+function lockExample(root) {
+    for (const element of root.querySelectorAll("input, select, button")) {
+        // Managed by 'renderChecks'.
+        if (element.id === "solve" || element.id === "stop" || element.classList.contains("keep-enabled"))
+            continue;
+        element.disabled = project.example === true;
+    }
+}
+
+function lockExampleSections() {
+    for (const id of EDITABLE_SECTIONS)
+        lockExample($(id));
 }
 
 function download(fileName, content, type) {
@@ -237,6 +272,7 @@ function renderCalendar() {
         return row;
     });
     $("calendar-table").tBodies[0].replaceChildren(...rows);
+    lockExample($("calendar-section"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -291,6 +327,7 @@ function renderParticipants() {
             renderAvailability();
             $("availability-section").scrollIntoView({behavior: "smooth"});
         });
+        edit.classList.add("keep-enabled");
         actionsCell.append(edit);
         if (participant.role !== "teacher") {
             actionsCell.append(button(t("participants.delete"), () => {
@@ -305,6 +342,7 @@ function renderParticipants() {
         return row;
     });
     $("participants-table").tBodies[0].replaceChildren(...rows);
+    lockExample($("participants-section"));
 }
 
 function button(text, onClick) {
@@ -362,7 +400,7 @@ function initAvailability() {
     grid.addEventListener("pointerdown", (event) => {
         const cell = event.target.closest(".slot");
         const participant = selectedParticipant();
-        if (cell === null || participant === null || event.button !== 0)
+        if (cell === null || participant === null || event.button !== 0 || project.example)
             return;
         event.preventDefault();
         painting = {participant, score: brush(), done: new Set()};
@@ -387,7 +425,7 @@ function initAvailability() {
     grid.addEventListener("click", (event) => {
         const cell = event.target.closest(".slot");
         const participant = selectedParticipant();
-        if (cell === null || participant === null || event.detail !== 0)
+        if (cell === null || participant === null || event.detail !== 0 || project.example)
             return;
         const {day, minute} = model.parseSlotKey(cell.dataset.key);
         model.setAvailability(participant, day, minute, minute + 1, brush(), 1);
@@ -484,6 +522,7 @@ function renderAvailabilityGrid() {
         }
     }
     grid.replaceChildren(table);
+    lockExample($("availability-section"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -569,6 +608,7 @@ function renderCourses() {
         return row;
     });
     $("courses-table").tBodies[0].replaceChildren(...rows);
+    lockExample($("courses-section"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -841,12 +881,14 @@ function initLanguage() {
     select.addEventListener("change", () => {
         i18n.setLanguage(select.value);
         writePreference("language", select.value);
+        translateExample();
         renderAll();
     });
 }
 
 function renderAll() {
     i18n.translateDocument();
+    $("language-flag").innerHTML = i18n.FLAGS[i18n.getLanguage()];
     renderProjectBar();
     renderCalendar();
     renderParticipants();
@@ -855,6 +897,7 @@ function renderAll() {
     renderParameters();
     renderChecks();
     renderResult();
+    lockExampleSections();
 }
 
 function init() {

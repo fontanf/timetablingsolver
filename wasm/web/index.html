@@ -13,9 +13,14 @@
     <header>
         <div class="page-title">
             <h1 data-i18n="page.title">Timetables</h1>
-            <label class="inline">
+            <label class="inline language">
                 <span data-i18n="page.language">Language</span>
-                <select id="language-select"></select>
+                <!-- The flag is drawn over the select, after the name of the
+                     selected language. -->
+                <span class="select-with-flag">
+                    <span id="language-flag" class="flag"></span>
+                    <select id="language-select"></select>
+                </span>
             </label>
         </div>
         <p data-i18n="page.description"></p>
@@ -32,6 +37,10 @@
             <button type="button" id="project-export" data-i18n="project.export"></button>
             <button type="button" id="project-import" data-i18n="project.import"></button>
             <input type="file" id="project-import-file" accept=".json,application/json" hidden>
+        </div>
+        <div id="example-banner" class="info" hidden>
+            <span data-i18n="example.banner"></span>
+            <button type="button" id="example-duplicate" class="primary" data-i18n="example.duplicate"></button>
         </div>
     </header>
 
@@ -102,7 +111,7 @@
             <div class="row">
                 <label>
                     <span data-i18n="availability.participant"></span>
-                    <select id="availability-participant"></select>
+                    <select id="availability-participant" class="keep-enabled"></select>
                 </label>
                 <fieldset class="brushes">
                     <legend data-i18n="availability.brush"></legend>

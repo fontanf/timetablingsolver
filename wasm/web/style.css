@@ -68,6 +68,39 @@ header p,
     gap: 0.5rem 1rem;
 }
 
+.language {
+    font-weight: 600;
+}
+
+.select-with-flag {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.select-with-flag select {
+    padding-right: 3rem;
+    /* As wide as the selected language, for the flag to be next to its
+       name (where supported). */
+    field-sizing: content;
+}
+
+.flag {
+    position: absolute;
+    /* Before the arrow of the select. */
+    right: 1.7rem;
+    display: inline-flex;
+    pointer-events: none;
+}
+
+.flag svg {
+    width: 1.75rem;
+    height: 1.17rem;
+    border-radius: 3px;
+    /* The white of the flags on a white background. */
+    box-shadow: 0 0 0 1px var(--border);
+}
+
 section {
     margin: 1.5rem 0;
     padding: 1rem;
@@ -189,6 +222,18 @@ button.primary {
     border-radius: 6px;
     color: var(--warning);
     background: var(--warning-background);
+}
+
+.info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--surface);
 }
 
 .messages {
@@ -405,7 +450,13 @@ td.missing {
     background-color: var(--possible);
 }
 
-.availability .slot:hover {
+/* The example: shown as is, but can't be painted. */
+.availability .slot:disabled {
+    opacity: 1;
+    cursor: default;
+}
+
+.availability .slot:hover:not(:disabled) {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
 }
