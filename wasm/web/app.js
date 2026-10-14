@@ -1074,6 +1074,25 @@ function renderResultOutdated() {
     renderPublication();
 }
 
+// The preference of a participant for the slot of a scheduled course:
+// "preferred", "possible" or "unavailable".
+function preferenceOf(p) {
+    return !p.available? "unavailable": p.score === model.SCORE_PREFERRED? "preferred": "possible";
+}
+
+const PREFERENCE_TITLES = {
+    preferred: "result.preferredTitle",
+    possible: "result.possibleTitle",
+    unavailable: "result.unavailableTitle",
+};
+
+// A small dot with the preference of a participant.
+function preferenceDot(preference) {
+    const dot = document.createElement("i");
+    dot.className = "dot " + preference;
+    return dot;
+}
+
 function renderResult() {
     const timetable = project.result;
     $("result-section").hidden = timetable === null;
@@ -1122,13 +1141,16 @@ function renderResult() {
             if (i > 0)
                 participantsCell.append(", ");
             const span = document.createElement("span");
+            span.className = "participant";
             span.textContent = participantName(p.participantId);
-            if (course.day !== null && !p.available) {
-                span.className = "unavailable-participant";
-                span.title = t("result.unavailableTitle");
-                span.textContent += " ⚠";
-            } else if (course.day !== null && p.score === model.SCORE_POSSIBLE) {
-                span.title = t("result.possibleTitle");
+            if (course.day !== null) {
+                const preference = preferenceOf(p);
+                span.prepend(preferenceDot(preference));
+                span.title = t(PREFERENCE_TITLES[preference]);
+                if (preference === "unavailable") {
+                    span.classList.add("unavailable-participant");
+                    span.append(" ⚠");
+                }
             }
             participantsCell.append(span);
         });
@@ -1215,9 +1237,21 @@ function renderTimetable(scheduled, courses, participantName) {
             const time = document.createElement("span");
             const hours = `${model.formatTime(course.start)} – ${model.formatTime(course.end)}`;
             time.textContent = short? model.formatTime(course.start): hours;
-            block.append(title, time);
+            // A dot per participant (the organizer first), with their
+            // preference for the slot.
+            const dots = document.createElement("span");
+            dots.className = "dots";
+            dots.append(...course.participants.map((p) => preferenceDot(preferenceOf(p))));
+            const line = document.createElement("span");
+            line.className = "line";
+            line.append(time, dots);
+            block.append(title, line);
             block.title = `${courses.get(course.courseId).name}\n${hours}\n`
-                + course.participants.map((p) => participantName(p.participantId)).join(", ");
+                + course.participants.map((p) =>
+                    t("result.preference", {
+                        participant: participantName(p.participantId),
+                        preference: t(PREFERENCE_TITLES[preferenceOf(p)]),
+                    })).join("\n");
             column.append(block);
         });
         week.append(column);

@@ -649,9 +649,85 @@ td.missing {
     min-width: 0;
 }
 
-.timetable .course.short span {
+.timetable .course.short .line > span:first-child {
+    font-size: 0.75rem;
+}
+
+/* The preference of a participant for the slot of a course: a dot. */
+.dot {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 0.45rem;
+    height: 0.45rem;
+    border: 1px solid var(--preferred);
+    border-radius: 50%;
+    box-sizing: border-box;
+    vertical-align: 0.05rem;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+
+.dot.preferred {
+    background: var(--preferred);
+}
+
+.dot.possible {
+    background: var(--background);
+}
+
+.dot.unavailable {
+    border-color: var(--error);
+    background: var(--error);
+}
+
+.timetable .course:not(.short) strong {
+    flex-shrink: 0;
+}
+
+/* The time, and the dots after it, or below it if there isn't enough room. */
+.timetable .course .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem 0.3rem;
+    min-width: 0;
+}
+
+.timetable .course .line > span:first-child {
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+.timetable .course .dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    max-width: 100%;
+}
+
+.timetable .course.short .line {
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+}
+
+.timetable .course.short .dots {
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.9rem;
+}
+
+#result-table .participant {
+    white-space: nowrap;
+}
+
+#result-table .participant .dot {
+    margin-right: 0.25rem;
 }
 
 #publish-block p {
