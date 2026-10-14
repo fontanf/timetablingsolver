@@ -54,13 +54,13 @@ It uses a local database.
 
 ## Projects online
 
-Each project of the user (not the example) has an encrypted copy online and a link (`index.html#project=<id>&k=<key>`), to open it on other devices. The modifications are sent automatically; the page fetches the latest version when a project is opened or when the page is shown again. If a project was modified on two devices at the same time, the user chooses the version to keep. The copy online is encrypted with the key of the link (AES-GCM), and the token to modify it is derived from the key: anyone with the link can modify the project. The exported files don't contain the link. The projects expire two years after their last use.
+Each project of the user (not the example) has an encrypted copy online and a link (`index.html#project=<id>&k=<key>`), to open it on other devices. The modifications are sent automatically; the page fetches the latest version when a project is opened or when the page is shown again. If a project was modified on two devices at the same time, the user chooses the version to keep. The copy online is encrypted with the key of the link (AES-GCM), and the token to modify it is derived from the key: anyone with the link can modify the project. The exported files don't contain the link. The copies online expire two months after their last modification; the browsers keep the projects, and send them again (with the same link) when they are opened.
 
 ## Polls
 
 The teacher creates a poll and sends its link to the students. Each student gives their name and their availabilities on `poll.html`, and can modify them with the same link until the poll is closed. The teacher fetches the responses into their project: a response replaces the availabilities of the student of the same name, or adds a new student with an individual course.
 
-The definition of the poll (the week, the availabilities of the teacher, their message) and the responses are encrypted with AES-GCM in the browsers. The key is in the link, after `#`, which browsers don't send to servers: the server only stores encrypted data. It is a Cloudflare Pages Function with a D1 database (`server/api.js`); the polls expire a year after their last use.
+The definition of the poll (the week, the availabilities of the organizer, their message) and the responses are encrypted with AES-GCM in the browsers. The key is in the link, after `#`, which browsers don't send to servers: the server only stores encrypted data. It is a Cloudflare Pages Function with a D1 database (`server/api.js`); the polls expire two months after their last modification (by the organizer, or an answer of a participant), and are created again, with the same links, when the organizer opens the project.
 
 ## Translations
 

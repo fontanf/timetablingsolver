@@ -326,6 +326,18 @@ blockquote {
     margin: 0.25rem 0;
 }
 
+.reminder {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0;
+}
+
+.reminder .toolbar {
+    margin: 0;
+}
+
 .sync-status {
     font-size: 0.85rem;
     color: var(--muted);

@@ -45,6 +45,16 @@
             <span class="link-row">
                 <input type="text" id="project-link-input" readonly data-i18n-aria-label="sync.link">
                 <button type="button" id="project-link-copy" data-i18n="poll.copy"></button>
+                <button type="button" id="project-link-email" data-i18n="sync.sendEmail"></button>
+            </span>
+        </div>
+        <!-- Until the link of the project is saved (see 'sync.js'). -->
+        <div id="link-reminder" class="warning reminder" hidden>
+            <span data-i18n="sync.reminder"></span>
+            <span class="toolbar">
+                <button type="button" id="link-reminder-email" class="primary" data-i18n="sync.sendEmailLong"></button>
+                <button type="button" id="link-reminder-copy" data-i18n="poll.copyLink"></button>
+                <button type="button" id="link-reminder-done" data-i18n="sync.savedIt"></button>
             </span>
         </div>
         <div id="example-banner" class="info" hidden>

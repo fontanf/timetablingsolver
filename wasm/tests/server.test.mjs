@@ -198,6 +198,31 @@ test("server: projects", options, async () => {
     assert.strictEqual((await request("GET", `${path}/x`, {token: ADMIN})).status, 404);
 });
 
+test("server: expiration two months after the last modification", options, async () => {
+    const db = new FakeD1();
+    const request = api({DB: db});
+    const expires = (table) => db.sqlite.prepare(`SELECT expires FROM ${table}`).get().expires;
+    const DAY = 24 * 3600 * 1000;
+    const PROJECT = "project-id-0123456789abcdef";
+    await request("PUT", `/api/projects/${PROJECT}`, {token: ADMIN, body: {data: "v1", version: 0}});
+    assert.ok(Math.abs(expires("projects") - (Date.now() + 61 * DAY)) < 60000);
+    // Reading doesn't change it; modifying does.
+    db.sqlite.prepare("UPDATE projects SET expires = ?").run(Date.now() + DAY);
+    await request("GET", `/api/projects/${PROJECT}`, {token: ADMIN});
+    assert.ok(expires("projects") < Date.now() + 2 * DAY);
+    await request("PUT", `/api/projects/${PROJECT}`, {token: ADMIN, body: {data: "v2", version: 1}});
+    assert.ok(expires("projects") > Date.now() + 60 * DAY);
+
+    // Polls: the responses are modifications, not the reading.
+    const {pollId} = (await request("POST", "/api/polls", {body: {adminToken: ADMIN, definition: "d"}})).body;
+    db.sqlite.prepare("UPDATE polls SET expires = ?").run(Date.now() + DAY);
+    await request("GET", `/api/polls/${pollId}`);
+    await request("GET", `/api/polls/${pollId}/responses`, {token: ADMIN});
+    assert.ok(expires("polls") < Date.now() + 2 * DAY);
+    await request("PUT", `/api/polls/${pollId}/responses/${RESPONSE_ID}`, {token: STUDENT, body: {data: "d"}});
+    assert.ok(expires("polls") > Date.now() + 60 * DAY);
+});
+
 test("server: errors", options, async () => {
     assert.deepStrictEqual(await api({})("GET", "/api/polls/x"), {status: 503, body: {error: "no-database"}});
     const request = api({DB: new FakeD1()});

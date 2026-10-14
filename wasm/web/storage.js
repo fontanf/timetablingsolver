@@ -103,6 +103,7 @@ function normalizeSync(sync) {
         key: sync.key,
         version: Number.isInteger(sync.version)? sync.version: 0,
         signature: typeof sync.signature === "string"? sync.signature: "",
+        saved: sync.saved === true,
     };
 }
 

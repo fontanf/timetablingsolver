@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {handleApi} from "../server/api.js";
 import * as client from "../web/client.js";
+import * as i18n from "../web/i18n.js";
 import * as model from "../web/model.js";
 import * as storage from "../web/storage.js";
 import * as sync from "../web/sync.js";
@@ -20,6 +21,16 @@ function localApi() {
     return {env, api: new client.Api("https://example.org", (url, init) => handleApi(new Request(url, init), env))};
 }
 
+function withEnglish(f) {
+    const previous = i18n.getLanguage();
+    i18n.setLanguage("en");
+    try {
+        return f();
+    } finally {
+        i18n.setLanguage(previous);
+    }
+}
+
 // The project as stored and loaded by a browser.
 const reload = (project) => storage.normalizeProject(JSON.parse(JSON.stringify(project)));
 
@@ -30,6 +41,21 @@ test("sync: links", () => {
     assert.strictEqual(link, `https://example.org/app/index.html?x#project=${project.sync.id}&k=${project.sync.key}`);
     assert.deepStrictEqual(sync.parseProjectLink(new URL(link).hash), {id: project.sync.id, key: project.sync.key});
     assert.strictEqual(sync.parseProjectLink("#p=abc"), null);
+});
+
+test("sync: the link sent by email", () => {
+    const project = model.newProject("Piano & co");
+    sync.enableSync(project);
+    assert.strictEqual(project.sync.saved, false);
+    const email = sync.linkEmail("https://example.org/", project, (key, parameters) =>
+        withEnglish(() => i18n.t(key, parameters)));
+    assert.match(email, /^mailto:\?subject=.*&body=/);
+    const parameters = new URLSearchParams(email.slice("mailto:?".length));
+    assert.strictEqual(parameters.get("subject"), "Link of the project “Piano & co”");
+    assert.ok(parameters.get("body").includes(sync.projectLink("https://example.org/", project)));
+    // Kept when stored.
+    project.sync.saved = true;
+    assert.strictEqual(reload(project).sync.saved, true);
 });
 
 test("sync: what is modified", () => {
@@ -74,6 +100,8 @@ test("sync: two devices", options, async () => {
     const link = sync.parseProjectLink(new URL(sync.projectLink("https://example.org/", a)).hash);
     const b = await sync.openProject(api, link);
     assert.strictEqual(b.name, "Piano");
+    // Opened with its link: no reminder to save it.
+    assert.strictEqual(b.sync.saved, true);
     assert.strictEqual(b.id, a.id);
     assert.ok(!sync.isModified(b));
     // With a wrong key, it can't be opened.
@@ -112,22 +140,29 @@ test("sync: two devices", options, async () => {
     assert.strictEqual(b.name, "Piano 2");
     assert.ok(!sync.isModified(b));
 
-    // A deletes the copy online: B's project loses its link, and stays.
+    // A deletes the copy online: the link doesn't work anymore, until B
+    // sends the project again (as after an expiration).
     await sync.deleteOnline(api, a);
     assert.strictEqual(a.sync, null);
-    assert.deepStrictEqual(await sync.pull(api, b), {status: "deleted"});
-    assert.strictEqual(b.sync, null);
     await assert.rejects(sync.openProject(api, link), (error) => error.code === "not-found");
+    assert.deepStrictEqual(await sync.pull(api, b), {status: "expired"});
+    assert.ok(sync.isModified(b));
+    assert.deepStrictEqual(await sync.push(api, b), {status: "saved"});
+    assert.strictEqual((await sync.openProject(api, link)).name, "Piano 2");
 });
 
-test("sync: a project modified by another device is deleted", options, async () => {
-    const {api} = localApi();
+test("sync: an expired project is sent again with the same link", options, async () => {
+    const {api, env} = localApi();
     const a = model.newProject("Piano");
     sync.enableSync(a);
     await sync.push(api, a);
-    const b = await sync.openProject(api, {id: a.sync.id, key: a.sync.key});
-    await sync.deleteOnline(api, b);
+    const link = {id: a.sync.id, key: a.sync.key};
+    // Expired on the server.
+    env.DB.sqlite.prepare("UPDATE projects SET expires = ?").run(Date.now() - 1);
+    await assert.rejects(sync.openProject(api, link), (error) => error.code === "not-found");
+    // Modified: sent again.
     a.name = "Piano 2";
-    assert.deepStrictEqual(await sync.push(api, a), {status: "deleted"});
-    assert.strictEqual(a.sync, null);
+    assert.deepStrictEqual(await sync.push(api, a), {status: "saved"});
+    assert.strictEqual(a.sync.version, 1);
+    assert.strictEqual((await sync.openProject(api, link)).name, "Piano 2");
 });

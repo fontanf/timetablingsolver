@@ -14,9 +14,12 @@
 //         version,     // the version of the copy online the project is based on
 //         signature,   // 'syncSignature' of the project when it was last sent
 //                      // or received
+//         saved,       // 'true' once the user saved the link (copied, sent by
+//                      // email, or opened it)
 //     }
 //
-// 'version' 0: the project isn't online yet.
+// 'version' 0: the project isn't online (yet, or anymore: the projects expire
+// two months after their last modification, see 'server/api.js').
 
 import {ApiError, decrypt, encrypt, generateKey, randomToken} from "./client.js";
 import {normalizeProject} from "./storage.js";
@@ -33,7 +36,16 @@ async function tokenOf(key) {
 
 // Give a link to a project ('version' 0: it is sent at the next 'push').
 export function enableSync(project) {
-    project.sync = {id: randomToken(), key: generateKey(), version: 0, signature: ""};
+    project.sync = {id: randomToken(), key: generateKey(), version: 0, signature: "", saved: false};
+}
+
+// The link of a project as an email to send to oneself ('mailto:'): it
+// doesn't go through the server. 't': the translation function.
+export function linkEmail(pageUrl, project, t) {
+    const name = project.name;
+    const subject = t("sync.emailSubject", {name});
+    const body = t("sync.emailBody", {name, link: projectLink(pageUrl, project)});
+    return "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
 }
 
 export function projectLink(pageUrl, project) {
@@ -95,28 +107,31 @@ function apply(project, data, version) {
 // - {status: "same"}: not modified;
 // - {status: "saved"};
 // - {status: "conflict", version, data}: modified on another device since
-//   (see 'resolveConflict');
-// - {status: "deleted"}: deleted on another device; the project has no link
-//   anymore.
-// Throws 'ApiError's (e.g. "network").
+//   (see 'resolveConflict').
+// If the copy online expired (or was deleted), it is sent again, with the
+// same link. Throws 'ApiError's (e.g. "network").
 export async function push(api, project) {
     if (!isModified(project))
         return {status: "same"};
     const {sync} = project;
     const signature = syncSignature(project);
+    const data = await encrypt(sync.key, syncData(project));
+    const token = await tokenOf(sync.key);
     try {
-        const data = await encrypt(sync.key, syncData(project));
-        sync.version = await api.writeProject(sync.id, await tokenOf(sync.key), data, sync.version);
+        try {
+            sync.version = await api.writeProject(sync.id, token, data, sync.version);
+        } catch (error) {
+            if (!(error instanceof ApiError && error.code === "not-found"))
+                throw error;
+            // Expired: created again.
+            sync.version = await api.writeProject(sync.id, token, data, 0);
+        }
         sync.signature = signature;
         return {status: "saved"};
     } catch (error) {
         if (error instanceof ApiError && error.code === "conflict") {
             const {version, data} = error.body;
             return {status: "conflict", version, data: await decrypt(sync.key, data)};
-        }
-        if (error instanceof ApiError && error.code === "not-found") {
-            project.sync = null;
-            return {status: "deleted"};
         }
         throw error;
     }
@@ -127,7 +142,8 @@ export async function push(api, project) {
 // - {status: "updated"};
 // - {status: "conflict", version, data}: modified here too (see
 //   'resolveConflict');
-// - {status: "deleted"}.
+// - {status: "expired"}: the copy online expired (or was deleted): it is sent
+//   again at the next 'push', with the same link.
 export async function pull(api, project) {
     const {sync} = project;
     if (sync.version === 0)
@@ -137,8 +153,8 @@ export async function pull(api, project) {
         read = await api.readProject(sync.id, await tokenOf(sync.key));
     } catch (error) {
         if (error instanceof ApiError && error.code === "not-found") {
-            project.sync = null;
-            return {status: "deleted"};
+            sync.version = 0;
+            return {status: "expired"};
         }
         throw error;
     }
@@ -166,7 +182,8 @@ export function resolveConflict(project, {version, data}, keepLocal) {
 export async function openProject(api, {id, key}) {
     const read = await api.readProject(id, await tokenOf(key));
     const project = normalizeProject(await decrypt(key, read.data));
-    project.sync = {id, key, version: read.version, signature: syncSignature(project)};
+    // Opened with its link: the user has it.
+    project.sync = {id, key, version: read.version, signature: syncSignature(project), saved: true};
     return project;
 }
 

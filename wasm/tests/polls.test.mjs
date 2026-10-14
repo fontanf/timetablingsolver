@@ -262,6 +262,29 @@ test("polls: a poll closed before it is online, and reset", {
         (error) => error.code === "not-found");
 });
 
+test("polls: an expired poll is created again with the same links", {
+    skip: hasSqlite? false: "node:sqlite isn't available",
+}, async () => {
+    const env = {DB: new FakeD1()};
+    const api = new client.Api("https://example.org", (url, init) => handleApi(new Request(url, init), env));
+    const project = model.newProject("Piano");
+    const alice = model.addStudent(project, "Alice");
+    polls.newPoll(project);
+    await polls.publishPoll(api, project);
+    const link = polls.parsePollLink(new URL(polls.participantLink("https://example.org/", project, alice)).hash);
+    env.DB.sqlite.prepare("UPDATE polls SET expires = ?").run(Date.now() - 1);
+    await assert.rejects(polls.openPoll(api, link.pollId, link.key), (error) => error.code === "not-found");
+    // The organizer opens the project: the answers are fetched, the poll is
+    // created again.
+    await polls.fetchResponses(api, project);
+    assert.ok(polls.needsPublish(project));
+    await polls.publishPoll(api, project);
+    assert.strictEqual((await polls.openPoll(api, link.pollId, link.key)).closed, false);
+    await polls.sendResponse(api, link.pollId, link.key, link, {name: "Alice", availability: {"0:600": 0}, comment: ""});
+    await polls.fetchResponses(api, project);
+    assert.deepStrictEqual(alice.availability, {"0:600": 0});
+});
+
 test("polls: errors of the network and of the host", async () => {
     const offline = new client.Api("", async () => {
         throw new TypeError("Failed to fetch");

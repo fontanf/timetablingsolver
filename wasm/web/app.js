@@ -276,7 +276,7 @@ function renderCalendar() {
 /////////////////////////////////////////////////////////////////////////////
 
 // The state of the sync of the projects: project id -> {state, error}, where
-// 'state' is "saving", "saved", "offline", "error" or "new-link".
+// 'state' is "saving", "saved", "offline" or "error".
 const syncStates = new Map();
 
 let syncTimer = null;
@@ -311,9 +311,7 @@ async function syncAll() {
         await publishPoll(target);
         if (!sync.isModified(target))
             continue;
-        // The message about the new link stays until the next modification.
-        if ((syncStates.get(target.id) || {}).state !== "new-link")
-            setSyncState(target, "saving");
+        setSyncState(target, "saving");
         try {
             await handleSyncResult(target, await sync.push(api, target));
         } catch (error) {
@@ -352,18 +350,15 @@ async function handleSyncResult(target, result) {
         else if (target === project)
             renderAll();
         setSyncState(target, "saved");
-    } else if (result.status === "deleted") {
-        // A new link, sent at the next sync.
-        sync.enableSync(target);
-        setSyncState(target, "new-link");
+    } else if (result.status === "expired") {
+        // Sent again, with the same link.
         scheduleSync(0);
     } else {
         if (result.status === "updated" && target === project)
             renderAll();
         // "Saved" only if there is nothing left to send (e.g. not a new project
-        // which wasn't sent yet); the message about a new link stays.
-        const previous = syncStates.get(target.id);
-        if (!sync.isModified(target) && (previous === undefined || previous.state !== "new-link"))
+        // which wasn't sent yet).
+        if (!sync.isModified(target))
             setSyncState(target, "saved");
     }
 }
@@ -375,7 +370,23 @@ function initSync() {
         $("project-link").setAttribute("aria-expanded", String(!panel.hidden));
         renderSync();
     });
-    $("project-link-copy").addEventListener("click", (event) => copyText($("project-link-input").value, event.target));
+    $("project-link-copy").addEventListener("click", (event) => {
+        copyText($("project-link-input").value, event.target);
+        linkSaved();
+    });
+    const sendEmail = () => {
+        location.href = sync.linkEmail(location.href, project, t);
+        linkSaved();
+    };
+    $("project-link-email").addEventListener("click", sendEmail);
+    $("link-reminder-email").addEventListener("click", sendEmail);
+    $("link-reminder-copy").addEventListener("click", (event) => {
+        copyText(sync.projectLink(location.href, project), event.target);
+        // After the message 'Copied!'.
+        const target = project;
+        setTimeout(() => linkSaved(target), 1500);
+    });
+    $("link-reminder-done").addEventListener("click", () => linkSaved());
     $("project-link-input").addEventListener("focus", (event) => event.target.select());
     // Back to the page: the project may have been modified on another device.
     document.addEventListener("visibilitychange", () => {
@@ -413,7 +424,18 @@ async function openLinkOfPage() {
     }
 }
 
+// The user saved the link of a project: no more reminder.
+function linkSaved(target = project) {
+    if (target.sync === null || target.sync === undefined || target.sync.saved)
+        return;
+    target.sync.saved = true;
+    persist();
+    renderSync();
+}
+
 function renderSync() {
+    $("link-reminder").hidden = project.example === true || project.sync === null || project.sync === undefined
+        || project.sync.saved;
     const isExample = project.example === true;
     $("project-link").hidden = isExample;
     $("project-link-panel").hidden = isExample || $("project-link").getAttribute("aria-expanded") !== "true";
@@ -425,14 +447,13 @@ function renderSync() {
     status.textContent = "";
     if (isExample || state === null)
         return;
-    if (state === "offline" || state === "error" || state === "new-link")
+    if (state === "offline" || state === "error")
         status.classList.add("problem");
     status.textContent = {
         "saving": () => t("sync.saving"),
         "saved": () => "✓ " + t("sync.saved"),
         "offline": () => t("sync.offline"),
         "error": () => t("sync.error", {error: t(client.errorKey(error))}),
-        "new-link": () => t("sync.newLink"),
     }[state]();
 }
 

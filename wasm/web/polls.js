@@ -225,7 +225,18 @@ export async function resetPoll(api, project) {
 // responses which can't be decrypted are counted in 'invalid'.
 export async function fetchResponses(api, project) {
     const {poll} = project;
-    const encrypted = await api.readResponses(poll.id, poll.adminToken);
+    let encrypted;
+    try {
+        encrypted = await api.readResponses(poll.id, poll.adminToken);
+    } catch (error) {
+        if (!(error instanceof ApiError && error.code === "not-found"))
+            throw error;
+        // Expired (two months after its last modification, see
+        // 'server/api.js'): created again by 'publishPoll', with the same
+        // links.
+        poll.created = 0;
+        encrypted = [];
+    }
     const responses = [];
     let invalid = 0;
     for (const {id, data, updated} of encrypted) {
