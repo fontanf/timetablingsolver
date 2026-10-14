@@ -32,6 +32,12 @@
         <p id="fatal-error" class="error-text" role="alert" hidden></p>
 
         <form id="response-form" hidden novalidate>
+            <!-- The timetable published by the organizer (see 'polls.js'). -->
+            <section id="my-timetable" class="timetable-box" hidden>
+                <h2 data-i18n="student.timetableTitle"></h2>
+                <ul id="my-timetable-courses"></ul>
+                <p id="my-timetable-date" class="note"></p>
+            </section>
             <section>
                 <p id="intro" class="intro"></p>
                 <blockquote id="teacher-message" hidden></blockquote>

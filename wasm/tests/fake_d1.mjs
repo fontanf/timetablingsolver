@@ -19,6 +19,21 @@ export class FakeD1 {
     prepare(sql) {
         return new FakeStatement(this.sqlite, sql, []);
     }
+
+    // In a transaction, as D1.
+    async batch(statements) {
+        this.sqlite.exec("BEGIN");
+        try {
+            const results = [];
+            for (const statement of statements)
+                results.push(await statement.run());
+            this.sqlite.exec("COMMIT");
+            return results;
+        } catch (error) {
+            this.sqlite.exec("ROLLBACK");
+            throw error;
+        }
+    }
 }
 
 class FakeStatement {

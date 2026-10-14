@@ -117,6 +117,40 @@ test("server: responses", options, async () => {
     assert.strictEqual((await request("GET", responses, {token: ADMIN})).status, 404);
 });
 
+test("server: publications", options, async () => {
+    const request = api({DB: new FakeD1()});
+    const {pollId} = (await request("POST", "/api/polls", {body: {adminToken: ADMIN, definition: "d"}})).body;
+    const sha = async (text) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))]
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+    // A participant answered with their own token; another one didn't answer
+    // (the organizer knows the token of their personal link).
+    await request("PUT", `/api/polls/${pollId}/responses/${RESPONSE_ID}`, {token: STUDENT, body: {data: "r"}});
+    const OTHER_ID = "other-response-0123456789ab";
+    const publications = `/api/polls/${pollId}/publications`;
+    const body = {publications: [
+        {responseId: RESPONSE_ID, data: "timetable 1"},
+        {responseId: OTHER_ID, tokenHash: await sha(OTHER), data: "timetable 2"},
+    ]};
+    assert.strictEqual((await request("PUT", publications, {token: STUDENT, body})).status, 403);
+    assert.strictEqual((await request("PUT", publications, {token: ADMIN, body: {publications: [{responseId: "bad", data: "x"}]}})).status, 400);
+    assert.deepStrictEqual(await request("PUT", publications, {token: ADMIN, body}), {status: 200, body: {count: 2}});
+
+    // Each one reads their own publication only.
+    const read = (id, token) => request("GET", `/api/polls/${pollId}/responses/${id}/publication`, {token});
+    assert.deepStrictEqual(await read(RESPONSE_ID, STUDENT), {status: 200, body: {data: "timetable 1"}});
+    assert.deepStrictEqual(await read(OTHER_ID, OTHER), {status: 200, body: {data: "timetable 2"}});
+    assert.strictEqual((await read(OTHER_ID, STUDENT)).status, 403);
+    assert.strictEqual((await read(RESPONSE_ID, OTHER)).status, 403);
+    assert.strictEqual((await read(RESPONSE_ID)).status, 401);
+
+    // Publishing again replaces; withdrawing removes.
+    await request("PUT", publications, {token: ADMIN, body: {publications: [{responseId: RESPONSE_ID, data: "timetable 3"}]}});
+    assert.strictEqual((await read(RESPONSE_ID, STUDENT)).body.data, "timetable 3");
+    assert.strictEqual((await read(OTHER_ID, OTHER)).status, 404);
+    assert.strictEqual((await request("DELETE", publications, {token: ADMIN})).status, 204);
+    assert.strictEqual((await read(RESPONSE_ID, STUDENT)).status, 404);
+});
+
 test("server: limits", options, async () => {
     const request = api({DB: new FakeD1()});
     assert.deepStrictEqual(

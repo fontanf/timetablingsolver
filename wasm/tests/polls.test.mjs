@@ -285,6 +285,71 @@ test("polls: an expired poll is created again with the same links", {
     assert.deepStrictEqual(alice.availability, {"0:600": 0});
 });
 
+test("polls: publication of the timetable", {
+    skip: hasSqlite? false: "node:sqlite isn't available",
+}, async () => {
+    const env = {DB: new FakeD1()};
+    const api = new client.Api("https://example.org", (url, init) => handleApi(new Request(url, init), env));
+    const project = model.newProject("Piano");
+    const alice = model.addStudent(project, "Alice", 30);
+    const bruno = model.addStudent(project, "Bruno", 30);
+    project.courses.push(model.newCourse("Group", 60, [model.teacherOf(project).id, alice.id, bruno.id]));
+    polls.newPoll(project);
+    await polls.publishPoll(api, project);
+    // Zoé answers with the shared link: she is added to the project.
+    const zoeResponse = await polls.sendResponse(api, project.poll.id, project.poll.key, null,
+        {name: "Zoé", availability: {"0:600": 0}, comment: ""});
+    await polls.fetchResponses(api, project);
+    const zoe = project.participants.find((p) => p.name === "Zoé");
+
+    // A timetable: Alice on Monday 10:00, the group on Tuesday, Bruno's and
+    // Zoé's courses not scheduled.
+    const [aliceCourse, brunoCourse, group, zoeCourse] = project.courses;
+    const scheduled = (course, day, start, end) => ({
+        courseId: course.id, day, start, end,
+        participants: course.participants.map((id) => ({participantId: id, score: 0, available: true})),
+    });
+    project.result = {signature: model.signature(project), score: 0, time: 0, courses: [
+        scheduled(aliceCourse, 0, 600, 630),
+        scheduled(brunoCourse, null, null, null),
+        scheduled(group, 1, 1080, 1140),
+        scheduled(zoeCourse, null, null, null),
+    ]};
+    assert.deepStrictEqual(polls.participantTimetable(project, project.result, alice), {
+        courses: [{name: aliceCourse.name, day: 0, start: 600, end: 630}, {name: "Group", day: 1, start: 1080, end: 1140}],
+        unscheduled: [],
+    });
+
+    // Nothing is published before the organizer publishes.
+    const link = (participant) => polls.parsePollLink(new URL(polls.participantLink("https://example.org/", project, participant)).hash);
+    const {poll} = project;
+    assert.strictEqual(await polls.readPublication(api, poll.id, poll.key, link(alice)), null);
+    await polls.publishTimetable(api, project);
+    assert.strictEqual(poll.published.signature, polls.publicationSignature(project));
+
+    // Each one sees their courses only.
+    const aliceTimetable = await polls.readPublication(api, poll.id, poll.key, link(alice));
+    assert.deepStrictEqual(aliceTimetable.courses.map((c) => c.name), [aliceCourse.name, "Group"]);
+    assert.ok(aliceTimetable.published > 0);
+    assert.deepStrictEqual(await polls.readPublication(api, poll.id, poll.key, link(bruno)).then((p) => [p.courses.map((c) => c.name), p.unscheduled]),
+        [["Group"], [brunoCourse.name]]);
+    // Zoé: with her personal link, and with the one she answered with.
+    for (const credentials of [link(zoe), zoeResponse])
+        assert.deepStrictEqual((await polls.readPublication(api, poll.id, poll.key, credentials)).unscheduled, [zoeCourse.name]);
+    // Not with the token of someone else.
+    await assert.rejects(polls.readPublication(api, poll.id, poll.key, {...link(alice), token: link(bruno).token}),
+        (error) => error.code === "forbidden");
+
+    // The timetable changes: published again; then withdrawn.
+    project.result.courses[1] = scheduled(brunoCourse, 2, 900, 930);
+    assert.notStrictEqual(poll.published.signature, polls.publicationSignature(project));
+    await polls.publishTimetable(api, project);
+    assert.deepStrictEqual((await polls.readPublication(api, poll.id, poll.key, link(bruno))).unscheduled, []);
+    await polls.withdrawTimetable(api, project);
+    assert.strictEqual(poll.published, null);
+    assert.strictEqual(await polls.readPublication(api, poll.id, poll.key, link(bruno)), null);
+});
+
 test("polls: errors of the network and of the host", async () => {
     const offline = new client.Api("", async () => {
         throw new TypeError("Failed to fetch");

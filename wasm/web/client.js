@@ -32,6 +32,12 @@ function importKey(key) {
     return crypto.subtle.importKey("raw", fromBase64Url(key), "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
+// SHA-256 of a text, in hexadecimal (as the hashes of the tokens of the server).
+export async function sha256(text) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // 'value' as JSON, encrypted: the initialization vector followed by the
 // encrypted text, in base64url.
 export async function encrypt(key, value) {
@@ -140,6 +146,18 @@ export class Api {
 
     writeResponse(pollId, responseId, token, data) {
         return this.request("PUT", `/polls/${pollId}/responses/${responseId}`, {token, body: {data}});
+    }
+
+    writePublications(pollId, adminToken, publications) {
+        return this.request("PUT", `/polls/${pollId}/publications`, {token: adminToken, body: {publications}});
+    }
+
+    deletePublications(pollId, adminToken) {
+        return this.request("DELETE", `/polls/${pollId}/publications`, {token: adminToken});
+    }
+
+    readPublication(pollId, responseId, token) {
+        return this.request("GET", `/polls/${pollId}/responses/${responseId}/publication`, {token});
     }
 
     readProject(projectId, token) {

@@ -30,6 +30,8 @@
 //         closed,
 //         created,       // when it was created on the server, 0 if not yet
 //         lastImport,    // the summary of the last import (see 'importResponses')
+//         published,     // null, or {date, signature}: the timetable published
+//                        // to the participants (see 'publishTimetable')
 //     }
 //
 // The definition of a poll (decrypted), seen by the students:
@@ -47,7 +49,7 @@
 //     pollUpdated,                            // the date of the last one
 //     comment,                                // its comment
 
-import {ApiError, decrypt, encrypt, generateKey, randomToken} from "./client.js";
+import {ApiError, decrypt, encrypt, generateKey, randomToken, sha256} from "./client.js";
 import * as model from "./model.js";
 
 const FORMAT_VERSION = 1;
@@ -133,6 +135,7 @@ export function newPoll(project, message = "") {
         closed: false,
         created: 0,
         lastImport: null,
+        published: null,
     };
     ensurePersonalLinks(project);
 }
@@ -233,8 +236,9 @@ export async function fetchResponses(api, project) {
             throw error;
         // Expired (two months after its last modification, see
         // 'server/api.js'): created again by 'publishPoll', with the same
-        // links.
+        // links (and without publication).
         poll.created = 0;
+        poll.published = null;
         encrypted = [];
     }
     const responses = [];
@@ -321,6 +325,85 @@ export function importResponses(project, responses, duration = 30) {
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Publication of the timetable
+/////////////////////////////////////////////////////////////////////////////
+
+// The timetable of a participant: their scheduled courses, sorted, and the
+// names of their courses which couldn't be scheduled.
+//
+//     {courses: [{name, day, start, end}], unscheduled: [name]}
+export function participantTimetable(project, timetable, participant) {
+    const courses = new Map(project.courses.map((c) => [c.id, c]));
+    const result = {courses: [], unscheduled: []};
+    for (const scheduled of timetable.courses) {
+        const course = courses.get(scheduled.courseId);
+        if (course === undefined || !scheduled.participants.some((p) => p.participantId === participant.id))
+            continue;
+        if (scheduled.day === null)
+            result.unscheduled.push(course.name);
+        else
+            result.courses.push({name: course.name, day: scheduled.day, start: scheduled.start, end: scheduled.end});
+    }
+    result.courses.sort((a, b) => a.day - b.day || a.start - b.start);
+    return result;
+}
+
+// What the participants see of the timetable: when it changes, it can be
+// published again.
+export function publicationSignature(project) {
+    if (project.result === null)
+        return "";
+    return JSON.stringify(project.participants
+        .filter((p) => p.role !== "teacher")
+        .map((p) => [p.id, participantTimetable(project, project.result, p)]));
+}
+
+// Publish the timetable ('project.result'): each participant sees their own
+// courses with their link (personal, or the one they answered with). It
+// replaces the previous publication.
+export async function publishTimetable(api, project) {
+    const {poll} = project;
+    // The poll has to be online.
+    await publishPoll(api, project);
+    const date = Date.now();
+    const publications = [];
+    for (const participant of project.participants) {
+        if (participant.role === "teacher")
+            continue;
+        const data = await encrypt(poll.key, {
+            version: FORMAT_VERSION,
+            published: date,
+            ...participantTimetable(project, project.result, participant),
+        });
+        const ids = new Set();
+        if (participant.pollLink !== undefined && participant.pollLink.pollId === poll.id) {
+            ids.add(participant.pollLink.responseId);
+            publications.push({
+                responseId: participant.pollLink.responseId,
+                tokenHash: await sha256(participant.pollLink.token),
+                data,
+            });
+        }
+        // The responses sent with the shared link: their token is the one of
+        // the participant's browser, known by the server.
+        for (const responseId of participant.pollResponseIds || []) {
+            if (!ids.has(responseId)) {
+                ids.add(responseId);
+                publications.push({responseId, data});
+            }
+        }
+    }
+    await api.writePublications(poll.id, poll.adminToken, publications);
+    poll.published = {date, signature: publicationSignature(project)};
+}
+
+export async function withdrawTimetable(api, project) {
+    const {poll} = project;
+    await api.deletePublications(poll.id, poll.adminToken);
+    poll.published = null;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // Students
 /////////////////////////////////////////////////////////////////////////////
 
@@ -350,6 +433,25 @@ export async function readOwnResponse(api, pollId, key, {responseId, token}) {
         throw error;
     }
     return {...normalizeResponse(await decrypt(key, read.data)), updated: read.updated};
+}
+
+// The timetable published for a participant ('{responseId, token}' of their
+// link): '{published, courses, unscheduled}', or null if there is none.
+export async function readPublication(api, pollId, key, {responseId, token}) {
+    let read;
+    try {
+        read = await api.readPublication(pollId, responseId, token);
+    } catch (error) {
+        if (error instanceof ApiError && error.code === "not-found")
+            return null;
+        throw error;
+    }
+    const publication = await decrypt(key, read.data);
+    return {
+        published: Number(publication.published) || 0,
+        courses: Array.isArray(publication.courses)? publication.courses: [],
+        unscheduled: Array.isArray(publication.unscheduled)? publication.unscheduled: [],
+    };
 }
 
 // Send the response of a student. 'saved': '{responseId, token}' of a

@@ -406,6 +406,10 @@ table.compact {
 
 
 
+.warning-text {
+    color: var(--warning);
+}
+
 .error-text {
     color: var(--error);
 }
@@ -650,13 +654,29 @@ td.missing {
     white-space: nowrap;
 }
 
+#publish-block p {
+    margin: 0.25rem 0;
+}
+
+.timetable-box {
+    border-color: var(--accent);
+    border-width: 2px;
+}
+
+.timetable-box ul {
+    margin: 0.25rem 0;
+    padding-left: 1.25rem;
+    font-size: 1.05rem;
+}
+
 /* Printing: only the timetable. */
 
 @media print {
     header,
     main > section:not(#result-section),
     #result-section .toolbar,
-    #result-outdated {
+    #result-outdated,
+    #publish-block {
         display: none !important;
     }
 

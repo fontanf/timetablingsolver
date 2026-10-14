@@ -141,6 +141,10 @@ function normalizePoll(poll) {
         closed: poll.closed === true,
         created: Number(poll.created) || 0,
         lastImport: (poll.lastImport && typeof poll.lastImport === "object")? poll.lastImport: null,
+        published: (poll.published && typeof poll.published === "object"
+                && typeof poll.published.signature === "string")?
+            {date: Number(poll.published.date) || 0, signature: poll.published.signature}:
+            null,
     };
 }
 

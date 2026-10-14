@@ -998,7 +998,69 @@ function stopOptimization() {
 // Timetable
 /////////////////////////////////////////////////////////////////////////////
 
+// The publication of the timetable to the participants.
+let publishing = false;
+
+async function publishOperation(operation) {
+    if (publishing)
+        return;
+    publishing = true;
+    $("publish-error").hidden = true;
+    $("publish-working").textContent = t("publish.working");
+    renderPublication();
+    const target = project;
+    try {
+        await operation(target);
+        save();
+    } catch (error) {
+        console.error(error);
+        $("publish-error").textContent = t(client.errorKey(error));
+        $("publish-error").hidden = false;
+    } finally {
+        publishing = false;
+        $("publish-working").textContent = "";
+        renderPublication();
+    }
+}
+
+function renderPublication() {
+    const {poll, result} = project;
+    $("publish-block").hidden = project.example === true || poll === null || result === null;
+    if ($("publish-block").hidden)
+        return;
+    const outdated = result.signature !== model.signature(project);
+    const published = poll.published;
+    const changed = published !== null && published.signature !== polls.publicationSignature(project);
+    const date = (published === null)? "": new Date(published.date).toLocaleString(i18n.getLanguage());
+    const status = $("publish-status");
+    status.className = "";
+    if (outdated && (published === null || changed)) {
+        status.textContent = t("publish.outdated");
+        status.className = "warning-text";
+    } else if (published === null) {
+        status.textContent = t("publish.notPublished");
+    } else if (changed) {
+        status.textContent = t("publish.changed", {date});
+        status.className = "warning-text";
+    } else {
+        status.textContent = t("publish.published", {date});
+    }
+    $("publish").textContent = t(published === null? "publish.publish": "publish.republish");
+    $("publish").hidden = published !== null && !changed;
+    $("publish").disabled = publishing || outdated;
+    $("unpublish").hidden = published === null;
+    $("unpublish").disabled = publishing;
+}
+
 function initResult() {
+    $("publish").addEventListener("click", () => {
+        if (confirm(t("publish.confirm")))
+            publishOperation((p) => polls.publishTimetable(api, p));
+    });
+    $("unpublish").addEventListener("click", () => {
+        if (confirm(t("publish.withdrawConfirm")))
+            publishOperation((p) => polls.withdrawTimetable(api, p));
+    });
     $("export-csv").addEventListener("click", () => {
         if (project.result !== null)
             download(project.name + ".csv", "﻿" + model.timetableCsv(project, project.result), "text/csv");
@@ -1009,11 +1071,13 @@ function initResult() {
 function renderResultOutdated() {
     $("result-outdated").hidden = project.result === null
         || project.result.signature === model.signature(project);
+    renderPublication();
 }
 
 function renderResult() {
     const timetable = project.result;
     $("result-section").hidden = timetable === null;
+    renderPublication();
     if (timetable === null)
         return;
     renderResultOutdated();

@@ -14,6 +14,7 @@
 import * as grid from "./availability_grid.js";
 import * as client from "./client.js";
 import * as i18n from "./i18n.js";
+import {formatTime} from "./model.js";
 import {t} from "./i18n.js";
 import * as polls from "./polls.js";
 import * as storage from "./storage.js";
@@ -27,6 +28,9 @@ const api = new client.Api();
 let link = null;
 // '{definition, closed}' of the poll.
 let poll = null;
+// The timetable published by the organizer for the participant (see
+// 'readPublication' in 'polls.js'), or null.
+let publication = null;
 // The response of the student: '{name, availability, comment}', and
 // '{responseId, token, sent}' once sent.
 let response = {name: "", availability: {}, comment: ""};
@@ -95,6 +99,49 @@ async function load() {
     $("loading").hidden = true;
     $("response-form").hidden = false;
     render();
+    await loadPublication();
+}
+
+// The timetable published for the participant: with their personal link,
+// or the one of their response sent with the shared link.
+async function loadPublication() {
+    const credentials = isPersonal()? link:
+        (response.responseId !== undefined)? {responseId: response.responseId, token: response.token}:
+        null;
+    if (credentials === null)
+        return;
+    try {
+        publication = await polls.readPublication(api, link.pollId, link.key, credentials);
+    } catch (error) {
+        // Not shown: the availabilities can still be given.
+        console.error(error);
+        publication = null;
+    }
+    renderPublication();
+}
+
+function renderPublication() {
+    $("my-timetable").hidden = publication === null;
+    if (publication === null)
+        return;
+    const items = [
+        ...publication.courses.map((course) => t("student.timetableCourse", {
+            day: i18n.dayName(course.day),
+            start: formatTime(course.start),
+            end: formatTime(course.end),
+            name: course.name,
+        })),
+        ...publication.unscheduled.map((name) => t("student.timetableUnscheduled", {name})),
+    ];
+    if (items.length === 0)
+        items.push(t("student.timetableNone"));
+    $("my-timetable-courses").replaceChildren(...items.map((text) => {
+        const item = document.createElement("li");
+        item.textContent = text;
+        return item;
+    }));
+    $("my-timetable-date").textContent = t("student.timetablePublished", {
+        date: new Date(publication.published).toLocaleString(i18n.getLanguage())});
 }
 
 function render() {
@@ -121,6 +168,7 @@ function render() {
         element.disabled = (closed || sending) && !element.closest("#own-link");
     renderGrid();
     renderSent();
+    renderPublication();
 }
 
 function renderGrid() {

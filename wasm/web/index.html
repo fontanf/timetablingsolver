@@ -198,6 +198,17 @@
             <h2 data-i18n="result.title"></h2>
             <div id="result-outdated" class="warning" hidden data-i18n="result.outdated"></div>
             <ul id="result-messages" class="messages warning"></ul>
+            <!-- The publication of the timetable to the participants (see
+                 'publishTimetable' in 'polls.js'). -->
+            <div id="publish-block" class="info sent" hidden>
+                <p id="publish-status"></p>
+                <div class="toolbar">
+                    <button type="button" id="publish" class="primary"></button>
+                    <button type="button" id="unpublish" data-i18n="publish.withdraw"></button>
+                    <span id="publish-working" class="note" role="status"></span>
+                </div>
+                <p id="publish-error" class="error-text" role="alert" hidden></p>
+            </div>
             <div id="timetable" class="grid-wrapper"></div>
             <div class="table-wrapper">
                 <table id="result-table">
