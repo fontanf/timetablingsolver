@@ -141,6 +141,7 @@ test("model: instance of a project", () => {
     });
     const teacher = model.teacherOf(project);
     const student = model.addStudent(project, "Alice", 20);
+    teacher.availability = {};
     model.setAvailability(teacher, 0, 600, 660, 0, 15);
     model.setAvailability(student, 2, 615, 645, 1, 15);
     // Outside the calendar: ignored.
@@ -181,28 +182,54 @@ test("model: errors", () => {
     ]);
 });
 
-test("model: the week painted on a grid", () => {
-    const calendar = model.defaultCalendar();
-    calendar.step = 30;
-    calendar.days.forEach((d) => d.ranges = []);
-    calendar.days[2].ranges = [{start: 600, end: 675}, {start: 1260, end: 1350}];
-    // From 07:00 to 21:00, and up to 22:30 for Wednesday.
-    assert.deepStrictEqual(model.weekGridHours(calendar), {start: 420, end: 1350});
-    const selection = model.weekSelection(calendar);
-    // 10:00-11:15: 10:00 and 10:30; 11:00 isn't a whole slot.
-    assert.deepStrictEqual(Object.keys(selection).sort(), ["2:1260", "2:1290", "2:1320", "2:600", "2:630"]);
+test("model: the availabilities of the organizer define the week", () => {
+    // A new project: the organizer is available on the default week.
+    const project = model.newProject("Test");
+    const organizer = model.teacherOf(project);
+    assert.strictEqual(organizer.availability["0:540"], model.SCORE_PREFERRED);
+    assert.strictEqual(model.countAvailableSlots(project.calendar, organizer), 5 * 11 * 4);
 
-    // Monday 09:00-10:30 and 14:00-15:00 painted; Wednesday unchanged.
-    for (const minute of [540, 570, 600, 840, 870])
-        selection[model.slotKey(0, minute)] = model.SCORE_PREFERRED;
-    model.setWeekSelection(calendar, selection, [0]);
-    assert.deepStrictEqual(calendar.days[0].ranges, [{start: 540, end: 630}, {start: 840, end: 900}]);
-    assert.deepStrictEqual(calendar.days[2].ranges, [{start: 600, end: 675}, {start: 1260, end: 1350}]);
-    assert.deepStrictEqual(model.usedDays(calendar), [0, 2]);
-    // Wednesday painted: its ranges are aligned on the slots.
-    delete selection["2:1320"];
-    model.setWeekSelection(calendar, selection, [2]);
-    assert.deepStrictEqual(calendar.days[2].ranges, [{start: 600, end: 660}, {start: 1260, end: 1320}]);
+    // Monday 09:00-10:30 (possible) and 14:00-15:00: the week of Monday.
+    project.calendar.step = 30;
+    const availability = {...organizer.availability};
+    for (const key of Object.keys(availability))
+        if (key.startsWith("0:"))
+            delete availability[key];
+    for (const minute of [540, 570, 600])
+        availability[model.slotKey(0, minute)] = model.SCORE_POSSIBLE;
+    for (const minute of [840, 870])
+        availability[model.slotKey(0, minute)] = model.SCORE_PREFERRED;
+    model.setOrganizerAvailability(project, availability, [0]);
+    assert.deepStrictEqual(project.calendar.days[0].ranges, [{start: 540, end: 630}, {start: 840, end: 900}]);
+    // The other days are kept.
+    assert.deepStrictEqual(project.calendar.days[1].ranges, [{start: 540, end: 1200}]);
+    // From 07:00 to 21:00.
+    assert.deepStrictEqual(model.weekGridHours(project.calendar), {start: 420, end: 1260});
+});
+
+test("model: the week and the availabilities of the organizer of the first versions", () => {
+    const project = model.newProject("Test");
+    const organizer = model.teacherOf(project);
+    project.calendar.step = 60;
+    project.calendar.days.forEach((d, day) => d.ranges = day === 0? [{start: 600, end: 780}]: []);
+    // Available 09:00-12:00 (partly outside the week) and on Tuesday.
+    organizer.availability = {"0:540": 0, "0:600": 0, "0:660": 1, "1:600": 0};
+    model.alignCalendar(project);
+    // The slots of the week where the organizer is available.
+    assert.deepStrictEqual(organizer.availability, {"0:600": 0, "0:660": 1});
+    assert.deepStrictEqual(project.calendar.days[0].ranges, [{start: 600, end: 720}]);
+    assert.deepStrictEqual(model.usedDays(project.calendar), [0]);
+    // No availability: the whole week.
+    organizer.availability = {};
+    project.calendar.days[0].ranges = [{start: 600, end: 780}];
+    model.alignCalendar(project);
+    assert.deepStrictEqual(organizer.availability, {"0:600": 0, "0:660": 0, "0:720": 0});
+    // Done when a project is loaded.
+    const loaded = storage.normalizeProject({
+        ...project,
+        participants: [{...organizer, availability: {"0:600": 1}}],
+    });
+    assert.deepStrictEqual(loaded.calendar.days[0].ranges, [{start: 600, end: 660}]);
 });
 
 test("model: removing a participant removes them from the courses", () => {
@@ -282,7 +309,7 @@ test("model: timetable of a result", () => {
     const csv = withLanguage("fr", () => model.timetableCsv(project, timetable));
     assert.strictEqual(csv,
         "Cours;Jour;Début;Fin;Participants;Hors disponibilités\n"
-        + "Cours de Alice;Jeudi;10:30;11:00;Professeur, Alice;Alice\n");
+        + "Cours de Alice;Jeudi;10:30;11:00;Organisateur, Alice;Alice\n");
 
     project.courses[0].duration = 45;
     assert.notStrictEqual(timetable.signature, model.signature(project));
@@ -291,7 +318,20 @@ test("model: timetable of a result", () => {
 test("model: example project solved by the worker", async () => {
     const project = withLanguage("fr", () => model.exampleProject());
     assert.deepStrictEqual(model.check(project).errors, []);
-    const result = await solveWithWorker(model.toInstance(project), {timeLimit: 10});
+    // 52 participants, 4 levels of 13, an individual course each and a group
+    // course per level.
+    assert.strictEqual(project.participants.length, 53);
+    assert.strictEqual(project.courses.length, 56);
+    for (const duration of [15, 30, 45, 60])
+        assert.strictEqual(project.courses.filter((c) => c.duration === duration && c.participants.length === 2).length, 13);
+    assert.deepStrictEqual(project.courses.slice(52).map((c) => c.participants.length), [14, 14, 14, 14]);
+    // The same example each time.
+    assert.deepStrictEqual(
+        withLanguage("fr", () => model.exampleProject()).participants.map((p) => p.availability),
+        project.participants.map((p) => p.availability));
+    // Solved with the module: the stack of the module is big enough (it
+    // overflowed with the default stack of Emscripten).
+    const result = await solveWithWorker(model.toInstance(project), {timeLimit: 30});
     const timetable = model.toTimetable(project, result);
     // Every course is scheduled, in the availabilities of everyone.
     assert.strictEqual(result.numberOfScheduledEvents, project.courses.length);
@@ -300,10 +340,6 @@ test("model: example project solved by the worker", async () => {
         for (const participant of course.participants)
             assert.ok(participant.available);
     }
-    // The collective course is on Wednesday 18:00-19:00, the only slot where
-    // its students are all available.
-    const collective = timetable.courses[timetable.courses.length - 1];
-    assert.deepStrictEqual([collective.day, collective.start, collective.end], [2, 18 * 60, 19 * 60]);
     // No one is in two courses at the same time.
     const busy = new Set();
     for (const course of timetable.courses) {
@@ -369,12 +405,18 @@ test("model: the example is in the language of the page", () => {
     const english = withLanguage("en", () => model.exampleProject());
     const french = withLanguage("fr", () => model.exampleProject());
     assert.ok(english.example && french.example);
-    assert.deepStrictEqual(names(english), [
-        "Example", "Teacher", "Alice", "Bruno", "Chloé", "David",
-        "Alice's course", "Bruno's course", "Chloé's course", "David's course", "Group course"]);
-    assert.deepStrictEqual(names(french), [
-        "Exemple", "Professeur", "Alice", "Bruno", "Chloé", "David",
-        "Cours de Alice", "Cours de Bruno", "Cours de Chloé", "Cours de David", "Cours collectif"]);
+    assert.deepStrictEqual(names(english).slice(0, 4), ["Example", "Organizer", "Adam", "Alice"]);
+    assert.deepStrictEqual(names(english).slice(-6), [
+        "Zacharie's course", "Zoé's course",
+        "Group course – level 1", "Group course – level 2", "Group course – level 3", "Group course – level 4"]);
+    assert.deepStrictEqual(names(french).slice(0, 4), ["Exemple", "Organisateur", "Adam", "Alice"]);
+    assert.deepStrictEqual(names(french).slice(-6), [
+        "Cours de Zacharie", "Cours de Zoé",
+        "Cours collectif – niveau 1", "Cours collectif – niveau 2", "Cours collectif – niveau 3",
+        "Cours collectif – niveau 4"]);
+    // A man and a woman for each letter.
+    const initials = english.participants.slice(1).map((p) => p.name[0].normalize("NFD")[0]);
+    assert.deepStrictEqual(initials.join(""), [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map((l) => l + l).join(""));
 });
 
 test("storage: export and import", () => {

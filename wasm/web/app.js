@@ -183,8 +183,7 @@ function renderProjectBar() {
 // The example can't be modified: the fields of the sections are disabled,
 // except those which only change what is shown ('keep-enabled').
 const EDITABLE_SECTIONS = [
-    "calendar-section", "poll-section", "participants-section", "availability-section", "courses-section",
-    "solve-section"];
+    "calendar-section", "participants-section", "availability-section", "courses-section", "solve-section"];
 
 function lockExample(root) {
     for (const element of root.querySelectorAll("input, select, button, textarea")) {
@@ -223,34 +222,33 @@ function changed(...sections) {
 // Calendar
 /////////////////////////////////////////////////////////////////////////////
 
-// The time ranges of the week, painted on a grid of all the days (see
-// 'weekSelection' in 'model.js'), and as they were when the grid was rendered.
-let weekSelection = {};
-let renderedWeekSelection = {};
-
-// The names of the states of the cells of the week.
-const WEEK_LABELS = {
-    [model.SCORE_PREFERRED]: "calendar.open",
-    [model.SCORE_POSSIBLE]: "calendar.open",
-    none: "calendar.closed",
-};
+// The availabilities of the organizer, which define the week (see
+// 'setOrganizerAvailability' in 'model.js'), as they were when the grid was
+// rendered.
+let renderedOrganizerAvailability = {};
 
 function initCalendar() {
     $("calendar-step").addEventListener("change", (event) => {
         project.calendar.step = Number(event.target.value);
+        // The availabilities on the slots of the new step.
+        model.alignCalendar(project);
         changed(renderCalendar, renderAvailabilityGrid, renderParticipants);
     });
     grid.attachPainting($("week-grid"), {
-        availability: () => project.example? null: weekSelection,
+        availability: () => {
+            const organizer = model.teacherOf(project);
+            return (project.example || organizer === null)? null: organizer.availability;
+        },
         brush: () => grid.brush("week-brush"),
         onChange: () => {
             // Only the days painted: the time ranges of the others are kept,
             // even if they aren't aligned on the step.
+            const availability = model.teacherOf(project).availability;
             const painted = new Set();
-            for (const key of new Set([...Object.keys(weekSelection), ...Object.keys(renderedWeekSelection)]))
-                if ((key in weekSelection) !== (key in renderedWeekSelection))
+            for (const key of new Set([...Object.keys(availability), ...Object.keys(renderedOrganizerAvailability)]))
+                if ((key in availability) !== (key in renderedOrganizerAvailability))
                     painted.add(model.parseSlotKey(key).day);
-            model.setWeekSelection(project.calendar, weekSelection, [...painted]);
+            model.setOrganizerAvailability(project, availability, [...painted]);
             changed(renderCalendar, renderAvailabilityGrid, renderParticipants);
         },
     });
@@ -261,14 +259,14 @@ function renderCalendar() {
     $("calendar-step").replaceChildren(...model.STEPS.map((step) =>
         new Option(t("calendar.minutes", {minutes: step}), step, false, step === calendar.step)));
     $("calendar-empty").hidden = model.usedDays(calendar).length > 0;
+    const organizer = model.teacherOf(project);
+    const availability = organizer === null? {}: organizer.availability;
+    renderedOrganizerAvailability = {...availability};
     // All the days, with the same hours.
     const hours = model.weekGridHours(calendar);
-    weekSelection = model.weekSelection(calendar);
-    renderedWeekSelection = {...weekSelection};
     grid.renderGrid($("week-grid"), {
         calendar: {step: calendar.step, days: calendar.days.map(() => ({ranges: [hours]}))},
-        availability: weekSelection,
-        labels: WEEK_LABELS,
+        availability,
     });
     lockExample($("calendar-section"));
 }
@@ -579,15 +577,15 @@ function renderPoll() {
             save();
             renderParticipants();
         }
-        renderPollStudents();
+        $("poll-copy-all").hidden = !project.participants.some((p) => p.role !== "teacher");
         $("poll-link").value = polls.pollLink(location.href, poll.id, poll.key);
         $("poll-closed-note").hidden = !poll.closed;
         $("poll-close").textContent = t(poll.closed? "poll.reopen": "poll.close");
         renderPollSummary(poll.lastImport);
     }
     renderPollStatus();
-    lockExample($("poll-section"));
-    for (const element of $("poll-section").querySelectorAll("#poll-links button"))
+    lockExample($("poll-links"));
+    for (const element of $("poll-links").querySelectorAll("button"))
         if (pollBusy)
             element.disabled = true;
 }
@@ -611,33 +609,6 @@ function renderPollStatus() {
         "offline": () => t("poll.offline"),
         "error": () => t("poll.publishError", {error: t(client.errorKey(error))}),
     }[current]();
-}
-
-// The students, their personal links, and whether they answered.
-function renderPollStudents() {
-    const students = project.participants.filter((p) => p.role !== "teacher");
-    $("poll-no-student").hidden = students.length > 0;
-    $("poll-students").hidden = students.length === 0;
-    $("poll-copy-all").hidden = students.length === 0;
-    const rows = students.map((student) => {
-        const row = document.createElement("tr");
-        const name = document.createElement("td");
-        name.textContent = student.name;
-        const status = document.createElement("td");
-        status.textContent = (student.pollUpdated === undefined)? t("poll.notAnswered"):
-            t("poll.answered", {date: new Date(student.pollUpdated).toLocaleString(i18n.getLanguage())});
-        if (student.pollUpdated === undefined)
-            status.className = "note";
-        const actions = document.createElement("td");
-        actions.className = "actions";
-        const copy = button(t("poll.copyLink"), (event) =>
-            copyText(polls.participantLink(location.href, project, student), event.target));
-        copy.setAttribute("aria-label", `${t("poll.copyLink")} – ${student.name}`);
-        actions.append(copy);
-        row.append(name, status, actions);
-        return row;
-    });
-    $("poll-students").tBodies[0].replaceChildren(...rows);
 }
 
 function renderPollSummary(summary) {
@@ -718,9 +689,22 @@ function renderParticipants() {
         if (count === 0)
             countCell.className = "missing";
 
+        // Their answer to the poll, at the last fetch.
+        const responseCell = document.createElement("td");
+        if (participant.role !== "teacher" && project.poll !== null) {
+            responseCell.textContent = (participant.pollUpdated === undefined)? t("poll.notAnswered"):
+                t("poll.answered", {date: new Date(participant.pollUpdated).toLocaleString(i18n.getLanguage())});
+            if (participant.pollUpdated === undefined)
+                responseCell.className = "note";
+        }
+
         const actionsCell = document.createElement("td");
         actionsCell.className = "actions";
         const edit = button(t("participants.availability"), () => {
+            if (participant.role === "teacher") {
+                $("calendar-section").scrollIntoView({behavior: "smooth"});
+                return;
+            }
             selectedParticipantId = participant.id;
             renderAvailability();
             $("availability-section").scrollIntoView({behavior: "smooth"});
@@ -744,7 +728,7 @@ function renderParticipants() {
             }));
         }
 
-        row.append(nameCell, roleCell, countCell, actionsCell);
+        row.append(nameCell, roleCell, countCell, responseCell, actionsCell);
         return row;
     });
     $("participants-table").tBodies[0].replaceChildren(...rows);
@@ -765,31 +749,21 @@ function button(text, onClick) {
 
 let selectedParticipantId = null;
 
+// The participants (not the organizer, whose availabilities are in the
+// section of the week).
+function participantsOnly() {
+    return project.participants.filter((p) => p.role !== "teacher");
+}
+
 function selectedParticipant() {
-    return project.participants.find((p) => p.id === selectedParticipantId)
-        || project.participants[0]
-        || null;
+    const participants = participantsOnly();
+    return participants.find((p) => p.id === selectedParticipantId) || participants[0] || null;
 }
 
 function initAvailability() {
     $("availability-participant").addEventListener("change", (event) => {
         selectedParticipantId = event.target.value;
         renderAvailabilityGrid();
-    });
-    $("availability-clear").addEventListener("click", () => {
-        const participant = selectedParticipant();
-        if (participant === null || !confirm(t("availability.clearConfirm", {name: participant.name})))
-            return;
-        participant.availability = {};
-        changed(renderAvailabilityGrid, renderParticipants);
-    });
-    grid.attachPainting($("availability-grid"), {
-        availability: () => {
-            const participant = selectedParticipant();
-            return (project.example || participant === null)? null: participant.availability;
-        },
-        brush: () => grid.brush(),
-        onChange: () => changed(renderParticipants),
     });
 }
 
@@ -800,25 +774,25 @@ function renderAvailability() {
 
 function renderAvailabilityParticipants() {
     const participant = selectedParticipant();
-    $("availability-participant").replaceChildren(...project.participants.map((p) =>
-        new Option(p.role === "teacher"? t("availability.teacherSuffix", {name: p.name}): p.name,
-            p.id, false, p === participant)));
+    $("availability-participant").replaceChildren(...participantsOnly().map((p) =>
+        new Option(p.name, p.id, false, p === participant)));
+    $("availability-empty").hidden = participant !== null;
+    $("availability-participant").closest("label").hidden = participant === null;
 }
 
+// The availabilities of a participant: only seen here, they give them with
+// their link (see 'polls.js').
 function renderAvailabilityGrid() {
     const participant = selectedParticipant();
     if (participant === null) {
         $("availability-grid").replaceChildren();
         return;
     }
-    // For the students, the slots where the teacher isn't available.
-    const teacher = model.teacherOf(project);
     grid.renderGrid($("availability-grid"), {
         calendar: project.calendar,
         availability: participant.availability,
-        teacherAvailability: (teacher !== null && teacher !== participant)? teacher.availability: null,
+        disabled: true,
     });
-    lockExample($("availability-section"));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -916,10 +890,6 @@ function initSolve() {
         project.parameters.timeLimit = Number(event.target.value);
         save();
     });
-    $("default-score").addEventListener("input", (event) => {
-        project.parameters.defaultScore = Number(event.target.value);
-        changed();
-    });
     $("solve").addEventListener("click", solve);
     $("stop").addEventListener("click", () => {
         stopOptimization();
@@ -929,7 +899,6 @@ function initSolve() {
 
 function renderParameters() {
     $("time-limit").value = project.parameters.timeLimit;
-    $("default-score").value = project.parameters.defaultScore;
 }
 
 function renderChecks() {
@@ -1150,14 +1119,19 @@ function renderTimetable(scheduled, courses, participantName) {
                 block.classList.add("has-unavailable");
             block.style.top = pixels(course.start - start) + "px";
             block.style.height = pixels(course.end - course.start) + "px";
+            // Too short for two lines: the name and the start on one line.
+            const short = pixels(course.end - course.start) < 32;
+            if (short)
+                block.classList.add("short");
             block.style.left = (100 * lanes[i] / laneEnds.length) + "%";
             block.style.width = (100 / laneEnds.length) + "%";
             const title = document.createElement("strong");
             title.textContent = courses.get(course.courseId).name;
             const time = document.createElement("span");
-            time.textContent = `${model.formatTime(course.start)} – ${model.formatTime(course.end)}`;
+            const hours = `${model.formatTime(course.start)} – ${model.formatTime(course.end)}`;
+            time.textContent = short? model.formatTime(course.start): hours;
             block.append(title, time);
-            block.title = `${courses.get(course.courseId).name}\n${time.textContent}\n`
+            block.title = `${courses.get(course.courseId).name}\n${hours}\n`
                 + course.participants.map((p) => participantName(p.participantId)).join(", ");
             column.append(block);
         });

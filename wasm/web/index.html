@@ -60,8 +60,9 @@
             <div class="row">
                 <fieldset class="brushes">
                     <legend data-i18n="availability.brush"></legend>
-                    <label class="brush"><input type="radio" name="week-brush" value="0" checked><span class="swatch preferred"></span> <span data-i18n="calendar.open"></span></label>
-                    <label class="brush"><input type="radio" name="week-brush" value="none"><span class="swatch unavailable"></span> <span data-i18n="calendar.closed"></span></label>
+                    <label class="brush"><input type="radio" name="week-brush" value="0" checked><span class="swatch preferred"></span> <span data-i18n="availability.preferred"></span></label>
+                    <label class="brush"><input type="radio" name="week-brush" value="1"><span class="swatch possible"></span> <span data-i18n="availability.possible"></span></label>
+                    <label class="brush"><input type="radio" name="week-brush" value="none"><span class="swatch unavailable"></span> <span data-i18n="availability.unavailable"></span></label>
                 </fieldset>
                 <label>
                     <span data-i18n="calendar.step"></span>
@@ -72,57 +73,9 @@
             <div id="week-grid" class="grid-wrapper"></div>
         </section>
 
-        <section id="poll-section">
-            <h2 data-i18n="poll.title"></h2>
-            <p class="note" data-i18n="poll.description"></p>
-            <label class="block">
-                <span data-i18n="poll.message"></span>
-                <textarea id="poll-message" rows="3"></textarea>
-            </label>
-            <p id="poll-status" class="sync-status" role="status"></p>
-
-            <div id="poll-links">
-                <h3 data-i18n="poll.personalTitle"></h3>
-                <p id="poll-no-student" class="note" hidden data-i18n="poll.noStudent"></p>
-                <div class="table-wrapper">
-                    <table id="poll-students" class="compact">
-                        <thead>
-                            <tr>
-                                <th scope="col" data-i18n="poll.student"></th>
-                                <th scope="col" data-i18n="poll.status"></th>
-                                <th scope="col"><span class="visually-hidden" data-i18n="participants.actions"></span></th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <div class="toolbar">
-                    <button type="button" id="poll-copy-all" data-i18n="poll.copyAll"></button>
-                </div>
-
-                <h3 data-i18n="poll.sharedTitle"></h3>
-                <p class="note" data-i18n="poll.sharedNote"></p>
-                <span class="link-row">
-                    <input type="text" id="poll-link" readonly data-i18n-aria-label="poll.sharedTitle">
-                    <button type="button" id="poll-copy" data-i18n="poll.copy"></button>
-                </span>
-
-                <h3 data-i18n="poll.responsesTitle"></h3>
-                <p class="note" data-i18n="poll.responsesNote"></p>
-                <p id="poll-closed-note" class="warning" hidden data-i18n="poll.closedNote"></p>
-                <div class="toolbar">
-                    <button type="button" id="poll-fetch" class="primary" data-i18n="poll.fetch"></button>
-                    <button type="button" id="poll-close"></button>
-                    <button type="button" id="poll-reset" data-i18n="poll.reset"></button>
-                    <span id="poll-working" class="note" role="status"></span>
-                </div>
-                <p id="poll-error" class="error-text" role="alert" hidden></p>
-                <div id="poll-summary"></div>
-            </div>
-        </section>
-
         <section id="participants-section">
             <h2 data-i18n="participants.title"></h2>
+            <p class="note" data-i18n="participants.linksNote"></p>
             <div class="table-wrapper">
                 <table id="participants-table">
                     <thead>
@@ -130,6 +83,7 @@
                             <th scope="col" data-i18n="participants.name"></th>
                             <th scope="col" data-i18n="participants.role"></th>
                             <th scope="col" data-i18n="participants.availableSlots"></th>
+                            <th scope="col" data-i18n="poll.status"></th>
                             <th scope="col"><span class="visually-hidden" data-i18n="participants.actions"></span></th>
                         </tr>
                     </thead>
@@ -148,24 +102,49 @@
                 <button type="submit" data-i18n="participants.add"></button>
             </form>
             <p class="note" data-i18n="participants.zeroDurationNote"></p>
+
+            <!-- The links of the participants and their answers (see 'polls.js'). -->
+            <div id="poll-links">
+                <div class="toolbar">
+                    <button type="button" id="poll-copy-all" data-i18n="poll.copyAll"></button>
+                    <button type="button" id="poll-fetch" data-i18n="poll.fetch"></button>
+                    <span id="poll-status" class="sync-status" role="status"></span>
+                    <span id="poll-working" class="note" role="status"></span>
+                </div>
+                <p id="poll-closed-note" class="warning" hidden data-i18n="poll.closedNote"></p>
+                <p id="poll-error" class="error-text" role="alert" hidden></p>
+                <div id="poll-summary"></div>
+                <details id="poll-options">
+                    <summary data-i18n="poll.options"></summary>
+                    <label class="block">
+                        <span data-i18n="poll.message"></span>
+                        <textarea id="poll-message" rows="3"></textarea>
+                    </label>
+                    <h3 data-i18n="poll.sharedTitle"></h3>
+                    <p class="note" data-i18n="poll.sharedNote"></p>
+                    <span class="link-row">
+                        <input type="text" id="poll-link" readonly data-i18n-aria-label="poll.sharedTitle">
+                        <button type="button" id="poll-copy" data-i18n="poll.copy"></button>
+                    </span>
+                    <div class="toolbar">
+                        <button type="button" id="poll-close"></button>
+                        <button type="button" id="poll-reset" data-i18n="poll.reset"></button>
+                    </div>
+                    <p class="note" data-i18n="poll.privacyNote"></p>
+                </details>
+            </div>
         </section>
 
         <section id="availability-section">
             <h2 data-i18n="availability.title"></h2>
+            <p class="note" data-i18n="availability.note"></p>
+            <p id="availability-empty" class="note" hidden data-i18n="availability.noParticipant"></p>
             <div class="row">
                 <label>
                     <span data-i18n="availability.participant"></span>
                     <select id="availability-participant" class="keep-enabled"></select>
                 </label>
-                <fieldset class="brushes">
-                    <legend data-i18n="availability.brush"></legend>
-                    <label class="brush"><input type="radio" name="brush" value="0" checked><span class="swatch preferred"></span> <span data-i18n="availability.preferred"></span></label>
-                    <label class="brush"><input type="radio" name="brush" value="1"><span class="swatch possible"></span> <span data-i18n="availability.possible"></span></label>
-                    <label class="brush"><input type="radio" name="brush" value="none"><span class="swatch unavailable"></span> <span data-i18n="availability.unavailable"></span></label>
-                </fieldset>
-                <button type="button" id="availability-clear" data-i18n="availability.clear"></button>
             </div>
-            <p class="note" data-i18n="availability.note"></p>
             <div id="availability-grid" class="grid-wrapper"></div>
         </section>
 
@@ -193,10 +172,6 @@
                 <label>
                     <span data-i18n="solve.timeLimit"></span>
                     <input type="number" id="time-limit" min="1" step="1">
-                </label>
-                <label>
-                    <span data-i18n="solve.defaultScore"></span>
-                    <input type="number" id="default-score" min="2" step="1">
                 </label>
             </div>
             <p class="note" data-i18n="solve.note"></p>

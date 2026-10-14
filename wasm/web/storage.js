@@ -2,7 +2,7 @@
 // and import from JSON files.
 
 import {t} from "./i18n.js";
-import {EXAMPLE_ID, defaultParameters, newId, normalizeCalendar} from "./model.js";
+import {EXAMPLE_ID, alignCalendar, defaultParameters, newId, normalizeCalendar} from "./model.js";
 
 const STORAGE_KEY = "timetablingsolver.projects";
 
@@ -67,7 +67,7 @@ export function openStore() {
 // A project with the missing fields filled with their defaults (projects of
 // older versions, imported files).
 export function normalizeProject(project) {
-    return {
+    const normalized = {
         id: typeof project.id === "string"? project.id: newId(),
         name: typeof project.name === "string"? project.name: t("project.defaultName"),
         created: typeof project.created === "number"? project.created: Date.now(),
@@ -79,11 +79,19 @@ export function normalizeProject(project) {
             duration: Number(c.duration),
             participants: Array.isArray(c.participants)? c.participants.map(String): [],
         })),
-        parameters: {...defaultParameters(), ...(project.parameters || {})},
+        parameters: {
+            ...defaultParameters(),
+            // The first versions had the score of the unavailable slots too.
+            timeLimit: Number((project.parameters || {}).timeLimit) || defaultParameters().timeLimit,
+        },
         result: project.result ?? null,
         poll: normalizePoll(project.poll),
         sync: normalizeSync(project.sync),
     };
+    // The week and the availabilities of the organizer (set separately by the
+    // first versions).
+    alignCalendar(normalized);
+    return normalized;
 }
 
 // See 'sync.js'.

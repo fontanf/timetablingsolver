@@ -29,7 +29,6 @@
 //             participants: [participantId, ...],
 //         }],
 //         parameters: {
-//             defaultScore,      // score of an unavailable slot
 //             timeLimit,         // in seconds
 //         },
 //         result: null | timetable (see 'toTimetable'),
@@ -48,6 +47,9 @@ import {dayName, t} from "./i18n.js";
 
 export const SCORE_PREFERRED = 0;
 export const SCORE_POSSIBLE = 1;
+// The score of an unavailable slot: the solver uses one only if there is no
+// other way to schedule the courses.
+export const UNAVAILABLE_SCORE = 10;
 
 export const STEPS = [5, 10, 15, 20, 30, 60];
 
@@ -96,7 +98,7 @@ export function normalizeCalendar(calendar) {
     return result;
 }
 
-// The hours shown to paint the week (see 'weekSelection'): from 07:00 to
+// The hours shown to paint the availabilities of the organizer: from 07:00 to
 // 21:00, and the time ranges outside, aligned on the step.
 export function weekGridHours(calendar) {
     const ranges = calendar.days.flatMap((d) => d.ranges);
@@ -106,21 +108,8 @@ export function weekGridHours(calendar) {
     return {start: Math.floor(start / step) * step, end: Math.min(24 * 60, Math.ceil(end / step) * step)};
 }
 
-// The time ranges of the week as painted slots: '"<day>:<minute>"' -> 0 for
-// the slots of the grid (see 'weekGridHours') in a time range.
-export function weekSelection(calendar) {
-    const {start, end} = weekGridHours(calendar);
-    const selection = {};
-    calendar.days.forEach((d, day) => {
-        for (let minute = start; minute + calendar.step <= end; minute += calendar.step)
-            if (d.ranges.some((r) => r.start <= minute && minute + calendar.step <= r.end))
-                selection[slotKey(day, minute)] = SCORE_PREFERRED;
-    });
-    return selection;
-}
-
-// The time ranges of the days 'days' from painted slots (see
-// 'weekSelection'): the consecutive slots of a day form a time range.
+// The time ranges of the days 'days' from painted slots ('"<day>:<minute>"'
+// -> score): the consecutive slots of a day form a time range.
 export function setWeekSelection(calendar, selection, days = [0, 1, 2, 3, 4, 5, 6]) {
     const minutes = calendar.days.map(() => []);
     for (const key of Object.keys(selection)) {
@@ -141,8 +130,36 @@ export function setWeekSelection(calendar, selection, days = [0, 1, 2, 3, 4, 5, 
     });
 }
 
+// The availabilities of the organizer define the week: the courses can take
+// place when they are available. Set them, and the time ranges of the days
+// 'days' (the other days keep their ranges, e.g. not aligned on the step).
+export function setOrganizerAvailability(project, availability, days = [0, 1, 2, 3, 4, 5, 6]) {
+    teacherOf(project).availability = availability;
+    setWeekSelection(project.calendar, availability, days);
+}
+
+// Make the week and the availabilities of the organizer the same: the slots
+// of the week where the organizer is available (for the projects of the
+// first versions, where they were set separately, or after a change of the
+// step). If the organizer gave no availability, they are available on the
+// whole week.
+export function alignCalendar(project) {
+    const organizer = teacherOf(project);
+    if (organizer === null)
+        return;
+    const {calendar} = project;
+    const slots = usedDays(calendar).flatMap((day) => slotTimes(calendar, day).map((minute) => slotKey(day, minute)));
+    let availability = {};
+    for (const key of slots)
+        if (organizer.availability[key] !== undefined)
+            availability[key] = organizer.availability[key];
+    if (Object.keys(availability).length === 0)
+        availability = Object.fromEntries(slots.map((key) => [key, SCORE_PREFERRED]));
+    setOrganizerAvailability(project, availability);
+}
+
 export function defaultParameters() {
-    return {defaultScore: 10, timeLimit: 30};
+    return {timeLimit: 30};
 }
 
 export function newParticipant(name, role = "student") {
@@ -155,7 +172,7 @@ export function newCourse(name, duration, participants) {
 
 export function newProject(name) {
     const teacher = newParticipant(t("names.teacher"), "teacher");
-    return {
+    const project = {
         id: newId(),
         name,
         created: Date.now(),
@@ -169,6 +186,9 @@ export function newProject(name) {
         // See 'sync.js'.
         sync: null,
     };
+    // The organizer is available on the default week.
+    alignCalendar(project);
+    return project;
 }
 
 // The teacher of a project: the first participant with the role "teacher".
@@ -202,42 +222,124 @@ export function removeParticipant(project, participantId) {
 
 export const EXAMPLE_ID = "example";
 
-// The example: a teacher, four students with an individual course each, and a
-// collective course for three of them. It isn't stored, can't be modified,
-// and is in the language of the page when it is created.
+// The participants of the example: a man and a woman for each letter.
+const EXAMPLE_NAMES = [
+    "Adam", "Alice", "Bruno", "Béatrice", "Charles", "Chloé", "David", "Diane", "Ethan", "Emma",
+    "Félix", "Fanny", "Gabriel", "Gabrielle", "Hugo", "Hélène", "Ivan", "Inès", "Jules", "Julie",
+    "Kevin", "Katia", "Louis", "Léa", "Marc", "Manon", "Nathan", "Nina", "Oscar", "Olivia",
+    "Paul", "Pauline", "Quentin", "Quitterie", "Raphaël", "Rose", "Samuel", "Sarah", "Thomas", "Tania",
+    "Ugo", "Ursula", "Victor", "Victoire", "William", "Wendy", "Xavier", "Xénia", "Yann", "Yasmine",
+    "Zacharie", "Zoé",
+];
+
+// The levels of the example: the duration of the individual courses, the slot
+// of the group course (day, start; it lasts an hour), and the profiles of the
+// participants (see 'EXAMPLE_PROFILES'), the beginners being mostly children.
+const EXAMPLE_LEVELS = [
+    {duration: 15, group: [2, 14 * 60], profiles: "ccccccccccctt"},
+    {duration: 30, group: [2, 16 * 60], profiles: "cccccctttttaa"},
+    {duration: 45, group: [5, 11 * 60], profiles: "tttttaaaauurr"},
+    {duration: 60, group: [1, 19 * 60], profiles: "aaaaarrrruutt"},
+];
+
+// The availabilities of the profiles of the participants of the example:
+// '(random) => [[day, start, end, score], ...]' (0: Monday, ...).
+const H = 60;
+const EXAMPLE_PROFILES = {
+    // Children: Wednesday afternoon, some days after school, sometimes
+    // Saturday morning.
+    c: (random) => [
+        [2, 13 * H + 30 * random(2), 17 * H + 60 * random(2), SCORE_PREFERRED],
+        ...random.days([0, 1, 3, 4], 1 + random(2)).map((day) =>
+            [day, 16 * H + 45 + 15 * random(2), 18 * H + 30 * random(2), SCORE_POSSIBLE]),
+        ...(random(2) === 0? [[5, 9 * H + 30, 12 * H, SCORE_PREFERRED]]: []),
+    ],
+    // Teenagers: Wednesday afternoon, some evenings, sometimes Saturday
+    // morning.
+    t: (random) => [
+        [2, 14 * H + 30 * random(2), 18 * H + 30 * random(2), SCORE_PREFERRED],
+        ...random.days([0, 1, 3, 4], 2 + random(2)).map((day) =>
+            [day, 17 * H + 30 + 30 * random(2), 20 * H, SCORE_POSSIBLE]),
+        ...(random(2) === 0? [[5, 10 * H, 13 * H, SCORE_POSSIBLE]]: []),
+    ],
+    // Working adults: some evenings, Saturday morning or afternoon,
+    // sometimes at lunch time.
+    a: (random) => [
+        ...random.days([0, 1, 2, 3, 4], 2 + random(2)).map((day) =>
+            [day, 18 * H + 30 * random(2), 20 * H, SCORE_PREFERRED]),
+        random(2) === 0? [5, 9 * H, 13 * H, SCORE_POSSIBLE]: [5, 14 * H, 17 * H, SCORE_POSSIBLE],
+        ...(random(3) === 0? [[random.days([0, 1, 3, 4], 1)[0], 13 * H, 14 * H, SCORE_POSSIBLE]]: []),
+    ],
+    // University students: afternoons, depending on their schedule.
+    u: (random) => random.days([0, 1, 2, 3, 4], 3).map((day, i) => {
+        const start = 13 * H + 60 * random(4);
+        return [day, start, start + 2 * H + 30 * random(3), i === 0? SCORE_PREFERRED: SCORE_POSSIBLE];
+    }),
+    // Retirees: early afternoons, sometimes Wednesday morning.
+    r: (random) => [
+        ...random.days([0, 1, 3, 4], 3).map((day) =>
+            [day, 13 * H + 30 * random(3), 16 * H + 30 * random(2), SCORE_PREFERRED]),
+        ...(random(2) === 0? [[2, 9 * H + 30, 11 * H + 30, SCORE_POSSIBLE]]: []),
+    ],
+};
+
+// The example: 52 participants in 4 levels, each with an individual course
+// (15, 30, 45 or 60 minutes depending on their level) and the group course of
+// their level. The availabilities of the participants depend on their profile
+// (children, teenagers, adults...), with pseudo-random variations, the same
+// each time. It isn't stored, can't be modified, and is in the language of the
+// page when it is created.
 export function exampleProject() {
     const project = newProject(t("project.example"));
     project.id = EXAMPLE_ID;
     project.example = true;
     project.created = 0;
-    // On Wednesday, the morning and a longer afternoon, and there are courses
-    // on Saturday morning.
-    project.calendar.days.forEach((d, day) => {
-        d.ranges = day < 5? [{start: 15 * 60, end: 20 * 60}]: [];
+    const organizer = teacherOf(project);
+    const {step} = project.calendar;
+
+    // The organizer (and so the week): the weekdays from 13:00 to 20:00,
+    // Wednesday morning (possible), and Saturday from 09:00 to 13:00, and
+    // from 14:00 to 18:00 (possible).
+    organizer.availability = {};
+    for (const day of [0, 1, 2, 3, 4])
+        setAvailability(organizer, day, 13 * H, 20 * H, SCORE_PREFERRED, step);
+    setAvailability(organizer, 2, 9 * H, 12 * H, SCORE_POSSIBLE, step);
+    setAvailability(organizer, 5, 9 * H, 13 * H, SCORE_PREFERRED, step);
+    setAvailability(organizer, 5, 14 * H, 18 * H, SCORE_POSSIBLE, step);
+    setOrganizerAvailability(project, organizer.availability);
+
+    // A pseudo-random generator (linear congruential), always with the same
+    // seed: 'random(n)' in [0, n), 'random.days(days, n)': n of the days.
+    let seed = 20261014;
+    const random = (n) => {
+        seed = (seed * 1103515245 + 12345) % 2147483648;
+        return Math.floor(seed / 65536) % n;
+    };
+    random.days = (days, n) => {
+        const left = [...days];
+        const chosen = [];
+        while (chosen.length < n && left.length > 0)
+            chosen.push(left.splice(random(left.length), 1)[0]);
+        return chosen.sort((a, b) => a - b);
+    };
+
+    const groups = EXAMPLE_LEVELS.map(() => []);
+    EXAMPLE_NAMES.forEach((name, i) => {
+        const level = i % EXAMPLE_LEVELS.length;
+        const {duration, group, profiles} = EXAMPLE_LEVELS[level];
+        const participant = addStudent(project, name, duration);
+        const profile = EXAMPLE_PROFILES[profiles[groups[level].length]];
+        groups[level].push(participant);
+        for (const [day, start, end, score] of profile(random))
+            setAvailability(participant, day, start, end, score, step);
+        // They registered for the group course of their level.
+        setAvailability(participant, group[0], group[1], group[1] + H, SCORE_PREFERRED, step);
     });
-    project.calendar.days[2].ranges = [{start: 9 * 60, end: 12 * 60}, {start: 13 * 60, end: 20 * 60}];
-    project.calendar.days[5].ranges = [{start: 9 * 60, end: 13 * 60}];
-    const teacher = teacherOf(project);
-    // The teacher: Monday, Tuesday and Wednesday afternoons, 14:00-19:00.
-    for (const day of [0, 1, 2])
-        setAvailability(teacher, day, 14 * 60, 19 * 60, SCORE_PREFERRED, project.calendar.step);
-    const students = [
-        ["Alice", 30, [[0, 17 * 60, 18 * 60, SCORE_PREFERRED], [2, 14 * 60, 16 * 60, SCORE_POSSIBLE]]],
-        ["Bruno", 45, [[0, 16 * 60, 19 * 60, SCORE_POSSIBLE], [1, 17 * 60, 18 * 60, SCORE_PREFERRED]]],
-        ["Chloé", 30, [[1, 14 * 60, 19 * 60, SCORE_POSSIBLE], [2, 17 * 60, 18 * 60, SCORE_PREFERRED]]],
-        ["David", 60, [[0, 17 * 60, 19 * 60, SCORE_PREFERRED]]],
-    ];
-    for (const [name, duration, slots] of students) {
-        const student = addStudent(project, name, duration);
-        for (const [day, start, end, score] of slots)
-            setAvailability(student, day, start, end, score, project.calendar.step);
-    }
-    // Everyone is available on Wednesday 18:00-19:00 for the collective course.
-    const collective = project.participants.filter((p) => ["Alice", "Bruno", "Chloé"].includes(p.name));
-    for (const student of collective)
-        setAvailability(student, 2, 18 * 60, 19 * 60, SCORE_PREFERRED, project.calendar.step);
-    project.courses.push(newCourse(
-        t("names.collectiveCourse"), 60, [teacher.id, ...collective.map((p) => p.id)]));
+    groups.forEach((participants, level) => {
+        project.courses.push(newCourse(
+            t("names.levelGroupCourse", {level: level + 1}), 60,
+            [organizer.id, ...participants.map((p) => p.id)]));
+    });
     return project;
 }
 
@@ -447,7 +549,7 @@ export function toInstance(project) {
     }));
     return {
         horizon,
-        defaultScore: project.parameters.defaultScore,
+        defaultScore: UNAVAILABLE_SCORE,
         resources,
         events,
     };
@@ -502,7 +604,7 @@ export function toTimetable(project, result) {
 
 // What the timetable depends on: when it changes, the timetable is outdated.
 export function signature(project) {
-    return JSON.stringify([project.calendar, project.participants, project.courses, project.parameters.defaultScore]);
+    return JSON.stringify([project.calendar, project.participants, project.courses]);
 }
 
 // The timetable as a CSV file, with the separator of the spreadsheets of the

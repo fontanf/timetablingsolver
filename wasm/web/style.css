@@ -270,8 +270,27 @@ textarea {
     font-size: 0.85rem;
 }
 
-#poll-section h3 {
-    margin: 1.25rem 0 0.25rem;
+#poll-links {
+    margin-top: 1rem;
+}
+
+#poll-options {
+    margin-top: 0.5rem;
+}
+
+#poll-options summary {
+    cursor: pointer;
+    color: var(--accent);
+}
+
+#poll-options[open] {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+#poll-options h3 {
+    margin: 1rem 0 0.25rem;
     font-size: 1rem;
 }
 
@@ -597,6 +616,25 @@ td.missing {
 .timetable .course strong {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.timetable .course.short {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 0.75rem;
+}
+
+.timetable .course.short strong {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.timetable .course.short span {
+    flex-shrink: 0;
     white-space: nowrap;
 }
 

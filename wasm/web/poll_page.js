@@ -103,15 +103,18 @@ function render() {
     if (poll === null)
         return;
     const {definition, closed} = poll;
-    const teacher = definition.teacher || "";
-    $("intro").textContent = (teacher === "")? t("student.introNoTeacher"):
-        definition.title? t("student.introTitle", {teacher, title: definition.title}):
-        t("student.intro", {teacher});
+    // With a personal link, the name is in the link: shown, not modified.
+    const name = isPersonal()? response.name.trim(): "";
+    $("intro").textContent =
+        (name !== "" && definition.title)? t("student.introNamedTitle", {name, title: definition.title}):
+        name !== ""? t("student.introNamed", {name}):
+        definition.title? t("student.introTitle", {title: definition.title}):
+        t("student.intro");
+    $("student-name").closest("label").hidden = isPersonal();
     $("teacher-message").textContent = definition.message || "";
     $("teacher-message").hidden = !definition.message;
     $("closed").hidden = !closed;
     $("student-name").value = response.name;
-    $("student-name").readOnly = isPersonal();
     $("student-comment").value = response.comment;
     // The personal link can still be copied.
     for (const element of $("response-form").querySelectorAll("input, textarea, button"))
